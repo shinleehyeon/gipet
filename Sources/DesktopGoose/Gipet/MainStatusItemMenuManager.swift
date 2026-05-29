@@ -21,6 +21,8 @@ final class MainStatusItemMenuManager: NSObject {
     var onNoCommitNudge: (() -> Void)?
     /// Called when the user picks "Dog menu…" inside the popover.
     var onOpenGooseMenu: (() -> Void)?
+    /// Called when contribution stats change, so the menu-bar icon can update.
+    var onStateChange: (() -> Void)?
 
     private var refreshTimer: Timer?
     private var nudgeTimer: Timer?
@@ -51,7 +53,11 @@ final class MainStatusItemMenuManager: NSObject {
         // resize the window and re-anchor so its top edge stays put.
         model.objectWillChange
             .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.resizeIfVisible() }
+            .sink { [weak self] in
+                self?.resizeIfVisible()
+                // Read after SwiftUI applies the change, so stats are current.
+                DispatchQueue.main.async { self?.onStateChange?() }
+            }
             .store(in: &cancellables)
     }
 
@@ -68,6 +74,7 @@ final class MainStatusItemMenuManager: NSObject {
         guard let window, let host = hosting else { return }
         anchorButton = button
         model.refresh()
+        model.scanRepos()
         sizeWindowToContent(host: host, window: window)
         window.anchor(below: button)
         NSApp.activate(ignoringOtherApps: true)
@@ -112,6 +119,7 @@ final class MainStatusItemMenuManager: NSObject {
     /// Kick off background refresh + the no-commit watcher.
     func start() {
         model.refresh()
+        model.scanRepos()
 
         // Timers fire on the main run loop; model/UI work is main-thread safe.
         refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in

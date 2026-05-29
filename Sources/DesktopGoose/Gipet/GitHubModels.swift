@@ -93,25 +93,24 @@ struct ContributionStats: Equatable {
             }
         }
 
-        // Current streak: count back from today. Today being 0 is a "grace"
-        // day (the streak only breaks once the day ends).
-        let byDay = Dictionary(uniqueKeysWithValues: sorted.map {
-            (calendar.startOfDay(for: $0.date), $0)
-        })
+        // Current streak: consecutive contribution days ending today. Today
+        // having no contribution yet is a "grace" day — we step back to
+        // yesterday so the streak only breaks once the day actually ends.
+        // (Set-based so it works even when today's cell isn't in the data yet,
+        //  e.g. right after midnight before GitHub adds the new column.)
+        let contribDates = Set(sorted.filter { $0.isContribution }
+            .map { calendar.startOfDay(for: $0.date) })
         var cursor = today
+        if !contribDates.contains(cursor) {                 // grace for today
+            cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor
+        }
         var current = 0
         var streakStart: Date?
         var streakEnd: Date?
-        var isFirst = true
-        while let day = byDay[cursor] {
-            if day.isContribution {
-                current += 1
-                if streakEnd == nil { streakEnd = day.date }
-                streakStart = day.date
-            } else if !isFirst {
-                break   // a real gap before today ends the streak
-            }
-            isFirst = false
+        while contribDates.contains(cursor) {
+            current += 1
+            if streakEnd == nil { streakEnd = cursor }
+            streakStart = cursor
             guard let prev = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
             cursor = prev
         }

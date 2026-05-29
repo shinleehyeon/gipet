@@ -84,6 +84,7 @@ struct ContributionView: View {
                              sub: rangeText(model.stats.currentStart, model.stats.currentEnd, endYear: true))
                 }
             }
+            ReposSection(model: model)
             footer
         }
         .padding(20)
@@ -420,4 +421,82 @@ private func rangeText(_ start: Date?, _ end: Date?, endYear: Bool) -> String {
     let s = fmt(start, "MMM d")
     let e = fmt(end, endYear ? "MMM d, yyyy" : "MMM d")
     return "\(s) → \(e)"
+}
+
+// MARK: - Watched repos (one-click commit)
+
+struct ReposSection: View {
+    @ObservedObject var model: GipetViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Repos").font(.system(size: 18, weight: .bold))
+                if !model.aiAvailable {
+                    Text("(no AI key — generic message)")
+                        .font(.system(size: 10)).foregroundColor(.secondary)
+                }
+                Spacer()
+                Button {
+                    if let path = pickFolder() { model.addRepo(path: path) }
+                } label: { Label("Add folder", systemImage: "plus") }
+                    .font(.system(size: 12))
+            }
+
+            if model.repos.isEmpty {
+                Text("Add a local git repo to get a one-click commit & push (with an AI-written message).")
+                    .font(.system(size: 11)).foregroundColor(.secondary)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(model.repos) { repo in RepoRow(model: model, repo: repo) }
+                }
+            }
+        }
+    }
+
+    private func pickFolder() -> String? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Watch"
+        return panel.runModal() == .OK ? panel.url?.path : nil
+    }
+}
+
+struct RepoRow: View {
+    @ObservedObject var model: GipetViewModel
+    let repo: RepoState
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: repo.isDirty ? "circle.fill" : "checkmark.circle.fill")
+                .foregroundColor(repo.isDirty ? .orange : GipetTheme.green)
+                .font(.system(size: 10))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(repo.name).font(.system(size: 13, weight: .medium))
+                Text(statusText).font(.system(size: 10)).foregroundColor(.secondary).lineLimit(1)
+            }
+            Spacer()
+            if repo.isBusy {
+                ProgressView().controlSize(.small)
+            } else {
+                Button("Journal") { model.journalCommit(repo: repo.path) }
+                    .help("AI가 gipet-journal.md에 한 줄 추가 후 커밋 (코드 안 건드림)")
+                Button("Commit") { model.commit(repo: repo.path) }
+                    .disabled(!repo.isDirty)
+                Button {
+                    model.removeRepo(repo.path)
+                } label: { Image(systemName: "xmark") }
+                    .buttonStyle(.plain).foregroundColor(.secondary)
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 8).fill(GipetTheme.card))
+    }
+
+    private var statusText: String {
+        if let r = repo.lastResult { return r }
+        return repo.isDirty ? "\(repo.dirtyCount) uncommitted change\(repo.dirtyCount == 1 ? "" : "s")" : "clean"
+    }
 }

@@ -77,6 +77,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         gipet.onOpenGooseMenu = { [weak self] in
             self?.popupGooseMenuAtCursor()
         }
+        // Stats changed → refresh the menu-bar icon (mood + streak).
+        gipet.onStateChange = { [weak self] in
+            self?.refreshTitle()
+        }
         gipet.start()
     }
 
@@ -195,7 +199,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func refreshTitle() {
-        statusItem?.button?.title = CharacterSettings.shared.current == .goose ? "🪿" : "🐕"
+        let charEmoji = CharacterSettings.shared.current == .goose ? "🪿" : "🐕"
+        let vm = GipetViewModel.shared
+        if vm.isSignedIn, !vm.days.isEmpty {
+            // Mood reflects today's commit; badge shows the current streak.
+            let mood = vm.stats.committedToday ? "😊" : "😴"
+            statusItem?.button?.title = "\(charEmoji)\(mood) \(vm.stats.currentStreak)"
+        } else {
+            statusItem?.button?.title = charEmoji
+        }
         gooseMenu?.items.forEach { mi in
             if let raw = mi.representedObject as? String,
                let kind = CharacterKind(rawValue: raw) {

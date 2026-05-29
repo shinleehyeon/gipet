@@ -17,6 +17,10 @@ final class GipetViewModel: ObservableObject {
     @Published var errorText: String?
     @Published var lastUpdated: Date?
 
+    // Watched git repos (one-click commit feature).
+    @Published var repos: [RepoState] = []
+    var aiAvailable: Bool { OpenRouterClient.isConfigured }
+
     var isSignedIn: Bool { TokenStore.shared.isSignedIn }
 
     private let provider = GitHubDataProvider.shared
@@ -109,5 +113,126 @@ final class GipetViewModel: ObservableObject {
               let (data, _) = try? await URLSession.shared.data(from: url),
               let img = NSImage(data: data) else { return }
         await MainActor.run { self.avatar = img }
+    }
+
+    // MARK: - Watched repos
+
+    /// Add a folder (must be a git repo) to the watch list, then rescan.
+    func addRepo(path: String) {
+        guard GitService.isGitRepo(path) else {
+            errorText = "Not a git repository: \(path)"
+            return
+        }
+        WatchedReposStore.add(path)
+        scanRepos()
+    }
+
+    func removeRepo(_ path: String) {
+        WatchedReposStore.remove(path)
+        scanRepos()
+    }
+
+    /// Refresh each watched repo's dirty count (off-main, then publish).
+    func scanRepos() {
+        let paths = WatchedReposStore.paths
+        Task {
+            let states: [RepoState] = paths.map { p in
+                RepoState(path: p, name: GitService.repoName(p), dirtyCount: GitService.dirtyCount(p))
+            }
+            await MainActor.run { self.repos = states }
+        }
+    }
+
+    /// Stage all, generate an AI message (or fall back), commit, and push.
+    func commit(repo path: String) {
+        setBusy(path, true)
+        Task {
+            let message: String
+            if OpenRouterClient.isConfigured {
+                let diff = GitService.diffForMessage(path)
+                if let ai = try? await OpenRouterClient.commitMessage(for: diff), !ai.isEmpty {
+                    message = ai
+                } else {
+                    message = fallbackMessage()
+                }
+            } else {
+                message = fallbackMessage()
+            }
+            let result = GitService.commitAndPush(path, message: message)
+            await MainActor.run {
+                self.setBusy(path, false)
+                self.updateRepo(path) {
+                    $0.lastResult = result.ok ? "✓ \(message)" : "✗ \(result.output)"
+                    $0.dirtyCount = GitService.dirtyCount(path)
+                }
+            }
+        }
+    }
+
+    private func fallbackMessage() -> String {
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd HH:mm"
+        return "chore: update (\(df.string(from: Date())))"
+    }
+
+    /// Journal mode: append an AI-written line to `gipet-journal.md` and commit
+    /// only that file. Keeps the streak green without touching real code.
+    func journalCommit(repo path: String) {
+        setBusy(path, true)
+        Task {
+            let line: String
+            if OpenRouterClient.isConfigured, let ai = try? await OpenRouterClient.journalEntry(), !ai.isEmpty {
+                line = ai
+            } else {
+                line = fallbackJournalLine()
+            }
+            let result = appendJournalAndCommit(path: path, line: line)
+            await MainActor.run {
+                self.setBusy(path, false)
+                self.updateRepo(path) {
+                    $0.lastResult = result.ok ? "📓 \(line)" : "✗ \(result.output)"
+                    $0.dirtyCount = GitService.dirtyCount(path)
+                }
+            }
+        }
+    }
+
+    private func appendJournalAndCommit(path: String, line: String) -> GitResult {
+        let fileName = "gipet-journal.md"
+        let fileURL = URL(fileURLWithPath: path).appendingPathComponent(fileName)
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd HH:mm"
+        let entry = "- \(df.string(from: Date())) — \(line)\n"
+
+        if !FileManager.default.fileExists(atPath: fileURL.path) {
+            let header = "# Gipet Journal 📓\n\n"
+            try? (header + entry).write(to: fileURL, atomically: true, encoding: .utf8)
+        } else if let handle = try? FileHandle(forWritingTo: fileURL) {
+            handle.seekToEndOfFile()
+            handle.write(entry.data(using: .utf8) ?? Data())
+            try? handle.close()
+        } else {
+            return GitResult(ok: false, output: "could not write \(fileName)")
+        }
+        let dfMsg = DateFormatter(); dfMsg.dateFormat = "yyyy-MM-dd"
+        return GitService.commitFile(path, file: fileName, message: "docs: journal \(dfMsg.string(from: Date()))")
+    }
+
+    private func fallbackJournalLine() -> String {
+        let lines = [
+            "오늘도 한 걸음 전진 🌱",
+            "작은 커밋이 모여 큰 프로젝트가 된다",
+            "꾸준함이 실력이다 💪",
+            "오늘의 나, 어제보다 한 줄 더",
+            "잔디는 거짓말을 하지 않는다 🟩",
+        ]
+        return lines.randomElement() ?? "오늘도 커밋 완료"
+    }
+
+    private func setBusy(_ path: String, _ busy: Bool) {
+        updateRepo(path) { $0.isBusy = busy }
+    }
+
+    private func updateRepo(_ path: String, _ change: (inout RepoState) -> Void) {
+        guard let i = repos.firstIndex(where: { $0.path == path }) else { return }
+        var r = repos[i]; change(&r); repos[i] = r
     }
 }
