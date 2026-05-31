@@ -33,7 +33,7 @@ final class MainStatusItemMenuManager: NSObject {
     // Refresh contributions every 10 min; nudge the dog every 20 s while
     // today's square is still empty.
     private let refreshInterval: TimeInterval = 600
-    private let nudgeInterval: TimeInterval = 20
+    private let nudgeInterval: TimeInterval = 180
 
     func configurePopover() {
         let root = ContributionView(
