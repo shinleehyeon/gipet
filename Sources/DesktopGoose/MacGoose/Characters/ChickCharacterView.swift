@@ -125,7 +125,8 @@ final class ChickCharacterView: NSView {
 
         // --- Speech bubble (e.g. a "커밋해!" nudge) ---
         if let speech = goose.speechText, !speech.isEmpty {
-            drawSpeechBubble(g, text: speech, anchor: goose.gooseRig.neckHeadPoint, up: up)
+            drawSpeechBubble(g, text: speech, anchor: goose.gooseRig.neckHeadPoint,
+                             up: up, dogPos: goose.position)
         }
 
         g.restoreGState()
@@ -134,18 +135,39 @@ final class ChickCharacterView: NSView {
     // Draw a small rounded speech bubble above the dog's head. The drawing
     // context is y-flipped (see draw()), so the text is rendered through a
     // local flip to keep it upright.
-    private func drawSpeechBubble(_ g: CGContext, text: String, anchor: Vector2, up: Vector2) {
+    private func drawSpeechBubble(_ g: CGContext, text: String, anchor: Vector2,
+                                  up: Vector2, dogPos: Vector2) {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.boldSystemFont(ofSize: 11),
             .foregroundColor: NSColor.black
         ]
-        let str = NSAttributedString(string: text, attributes: attrs)
-        let textSize = str.size()
-        let padX: CGFloat = 8, padY: CGFloat = 5
-        let w = textSize.width + padX * 2
-        let h = textSize.height + padY * 2
-        // Center the bubble above the head (up = (0,-1) in this coord space).
-        let center = anchor + up * (Float(h) / 2 + 16)
+        // Pre-split on "\n" and lay the lines out by hand — draw(at:) renders
+        // each single line upright reliably (see the local y-flip below).
+        let attrLines = text.components(separatedBy: "\n")
+            .map { NSAttributedString(string: $0, attributes: attrs) }
+        let lineSizes = attrLines.map { $0.size() }
+        let textW = lineSizes.map { $0.width }.max() ?? 0
+        let lineH = lineSizes.map { $0.height }.max() ?? 0
+        let textH = lineH * CGFloat(attrLines.count)
+        let padX: CGFloat = 9, padY: CGFloat = 6
+        let w = textW + padX * 2
+        let h = textH + padY * 2
+        // Desired center: above the head (up = (0,-1) in this coord space).
+        var cx = CGFloat(anchor.x + up.x * (Float(h) / 2 + 16))
+        var cy = CGFloat(anchor.y + up.y * (Float(h) / 2 + 16))
+        // Keep the whole bubble inside the 200×200 character view so it never
+        // clips when the dog walks to the top or an edge. Convert the center to
+        // view space, clamp it, then convert back. (100 matches the fixed
+        // transform offset / the view's half-size — see draw().)
+        let half: CGFloat = 100
+        let m: CGFloat = 3
+        var vx = (cx - CGFloat(dogPos.x)) + half
+        var vy = -(cy - CGFloat(dogPos.y)) + half
+        vx = min(max(vx, w / 2 + m), bounds.width  - w / 2 - m)
+        vy = min(max(vy, h / 2 + m), bounds.height - h / 2 - m)
+        cx = CGFloat(dogPos.x) + (vx - half)
+        cy = CGFloat(dogPos.y) - (vy - half)
+        let center = Vector2(Float(cx), Float(cy))
         let rect = CGRect(x: CGFloat(center.x) - w / 2, y: CGFloat(center.y) - h / 2,
                           width: w, height: h)
         let fill = CGColor(red: 1, green: 1, blue: 1, alpha: 0.96)
@@ -172,14 +194,19 @@ final class ChickCharacterView: NSView {
         g.addPath(body)
         g.strokePath()
 
-        // Text — undo the y-flip so glyphs are upright.
+        // Text — undo the y-flip so glyphs are upright, then stack the lines
+        // top-to-bottom centered (y is up here, so line 0 sits highest).
         g.saveGState()
         g.translateBy(x: CGFloat(center.x), y: CGFloat(center.y))
         g.scaleBy(x: 1, y: -1)
         let nsCtx = NSGraphicsContext(cgContext: g, flipped: false)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = nsCtx
-        str.draw(at: NSPoint(x: -textSize.width / 2, y: -textSize.height / 2))
+        for (i, line) in attrLines.enumerated() {
+            let lw = lineSizes[i].width
+            let y = textH / 2 - CGFloat(i + 1) * lineH
+            line.draw(at: NSPoint(x: -lw / 2, y: y))
+        }
         NSGraphicsContext.restoreGraphicsState()
         g.restoreGState()
     }

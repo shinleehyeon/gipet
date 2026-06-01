@@ -48,8 +48,9 @@ class Goose {
         var pauseDuration: Float = 0
 
         static func GetRandomPauseDuration() -> Float {
-            // Longer, more frequent stops — the dog idles (and sits) more.
-            return 2 + SamMath.RandomRange(0, 1) * 4   // 2…6s
+            // Moderate rests between wander legs — idles a fair bit, but not as
+            // long as the old 2–6s stops.
+            return 1.5 + SamMath.RandomRange(0, 1) * 2.5   // 1.5…4.0s
         }
 
         static func GetRandomWanderDuration() -> Float {
@@ -232,6 +233,13 @@ class Goose {
     // Click-to-rest: when true the dog sits still and ignores wandering/tasks.
     var isResting: Bool = false
 
+    // Press-and-drag: hold the dog and move the cursor to carry it. A quick tap
+    // (no drag) instead toggles resting.
+    var isGrabbed: Bool = false
+    private var mouseDownOnDog: Bool = false
+    private var grabStartCursor: Vector2 = .zero
+    private var grabOffset: Vector2 = .zero
+
     // Speech bubble shown above the dog (e.g. a "커밋해!" nudge). Read by the
     // character view each frame; cleared automatically when it expires.
     private(set) var speechText: String? = nil
@@ -348,20 +356,49 @@ class Goose {
         if speechText != nil && Time.time > speechExpireTime {
             speechText = nil
         }
-        // Click on the dog toggles resting (sit & stop) instead of grabbing the
-        // cursor. Clicking again wakes it back up into normal wandering.
-        let clickedOnDog = IsLeftMouseDown() && !lastFrameMouseButtonPressed
-            && Vector2.Distance(position + Vector2(0, 14), GetCursorPosition()) < 30
-        if clickedOnDog {
-            isResting.toggle()
-            velocity = .zero
-            if isResting {
-                targetPos = position
-            } else {
-                SetTask(.Wander, honck: false)
+        // Pressing on the dog starts a potential grab. Dragging the cursor
+        // picks the dog up and carries it; a quick tap (no drag) instead toggles
+        // resting (sit & stop / wake up).
+        let mouseDown = IsLeftMouseDown()
+        let cursor = GetCursorPosition()
+        let overDog = Vector2.Distance(position + Vector2(0, 14), cursor) < 30
+        if mouseDown && !lastFrameMouseButtonPressed && overDog {
+            mouseDownOnDog = true
+            grabStartCursor = cursor
+            grabOffset = position - cursor
+        }
+        if mouseDown && mouseDownOnDog {
+            if !isGrabbed && Vector2.Distance(cursor, grabStartCursor) > 6 {
+                isGrabbed = true
+                isResting = false
+            }
+            if isGrabbed {
+                position = cursor + grabOffset
+                velocity = .zero
             }
         }
-        lastFrameMouseButtonPressed = IsLeftMouseDown()
+        if !mouseDown && lastFrameMouseButtonPressed {
+            if isGrabbed {
+                // Dropped — carry on wandering from the new spot.
+                isGrabbed = false
+                targetPos = position
+                SetTask(.Wander, honck: false)
+            } else if mouseDownOnDog {
+                // A tap → toggle sit/stop.
+                isResting.toggle()
+                velocity = .zero
+                if isResting { targetPos = position } else { SetTask(.Wander, honck: false) }
+            }
+            mouseDownOnDog = false
+        }
+        lastFrameMouseButtonPressed = mouseDown
+
+        // While held by the cursor, the position already follows it — freeze AI.
+        if isGrabbed {
+            velocity = .zero
+            SolveFeet()
+            return
+        }
         // While resting, freeze in place: no AI, no movement — just keep the rig
         // solved so the sitting pose renders cleanly.
         if isResting {
@@ -412,21 +449,31 @@ class Goose {
         } else if taskWanderInfo.pauseStartTime > 0 {
             if Time.time - taskWanderInfo.pauseStartTime > taskWanderInfo.pauseDuration {
                 taskWanderInfo.pauseStartTime = -1
-                // Vary the pace each leg — mostly a slow stroll, sometimes a
-                // normal walk. (Slower legs are also shorter → more pausing.)
-                SetSpeed(SamMath.RandomRange(0, 1) < 0.5 ? .Stroll : .Walk)
-                let num = Task_Wander.GetRandomWalkTime() * currentSpeed
-                targetPos = Vector2(SamMath.RandomRange(0, GetMainWindowWidth()),
-                                    SamMath.RandomRange(0, GetMainWindowHeight()))
-                if Vector2.Distance(position, targetPos) > num {
-                    targetPos = position + Vector2.Normalize(targetPos - position) * num
-                }
+                beginWanderLeg()
             } else {
                 velocity = .zero
             }
         } else if Vector2.Distance(position, targetPos) < 20 {
-            taskWanderInfo.pauseStartTime = Time.time
-            taskWanderInfo.pauseDuration = Task_Wander.GetRandomPauseDuration()
+            // Take a rest fairly often so the dog idles a good amount between
+            // its wander legs.
+            if SamMath.RandomRange(0, 1) < 0.6 {
+                taskWanderInfo.pauseStartTime = Time.time
+                taskWanderInfo.pauseDuration = Task_Wander.GetRandomPauseDuration()
+            } else {
+                beginWanderLeg()
+            }
+        }
+    }
+
+    // Start a new wander leg: pick a pace and a fresh target to walk toward.
+    private func beginWanderLeg() {
+        // Vary the pace each leg — an even mix of slow stroll and quicker walk.
+        SetSpeed(SamMath.RandomRange(0, 1) < 0.5 ? .Stroll : .Walk)
+        let num = Task_Wander.GetRandomWalkTime() * currentSpeed
+        targetPos = Vector2(SamMath.RandomRange(0, GetMainWindowWidth()),
+                            SamMath.RandomRange(0, GetMainWindowHeight()))
+        if Vector2.Distance(position, targetPos) > num {
+            targetPos = position + Vector2.Normalize(targetPos - position) * num
         }
     }
 
@@ -579,7 +626,12 @@ class Goose {
         }
         let elapsed = Time.time - taskHeartTrailInfo.startTime
         if elapsed >= taskHeartTrailInfo.duration {
+            // Linger on the spot for 2s before wandering off again.
             SetTask(.Wander, honck: false)
+            taskWanderInfo.pauseStartTime = Time.time
+            taskWanderInfo.pauseDuration = 2
+            targetPos = position
+            velocity = .zero
             return
         }
         let p = elapsed / taskHeartTrailInfo.duration

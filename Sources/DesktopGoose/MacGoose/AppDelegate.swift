@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private(set) var Goose: MacintoshGoose?
+    // Last dad joke shown, so the celebration doesn't repeat back-to-back.
+    private var lastJoke: String?
 
     // The goose reads memes/notes directly from these project folders.
     // Drop a PNG into MemesDirectory and the next time the goose runs a
@@ -73,6 +75,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.Goose?.Say("커밋해! 🐾", duration: 5)
             let task: Goose.GooseTask = Bool.random() ? .CollectWindow_Meme : .CollectWindow_Notepad
             self?.Goose?.SetTask(task, honck: false)
+        }
+        // Committed today → the dog tells a random dad joke (no immediate repeat).
+        gipet.onDidCommit = { [weak self] in
+            let joke = DadJokes.random(avoiding: self?.lastJoke)
+            self?.lastJoke = joke
+            self?.Goose?.Say(joke, duration: 6)
         }
         // "Dog menu…" inside the popover pops the classic goose menu at the cursor.
         gipet.onOpenGooseMenu = { [weak self] in
@@ -152,6 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             menu.addItem(mi)
         }
         menu.addItem(.separator())
+        menu.addItem(withTitle: "말풍선 💬",   action: #selector(menuSpeak),      keyEquivalent: "").target = self
         menu.addItem(withTitle: "Honk",       action: #selector(menuHonk),       keyEquivalent: "h").target = self
         menu.addItem(withTitle: "Nab Mouse",  action: #selector(menuNabMouse),   keyEquivalent: "n").target = self
         menu.addItem(withTitle: "Wander",     action: #selector(menuWander),     keyEquivalent: "w").target = self
@@ -253,6 +262,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         refreshTitle()
     }
 
+    @objc private func menuSpeak() {
+        let joke = DadJokes.random(avoiding: lastJoke)
+        lastJoke = joke
+        Goose?.Say(joke, duration: 6)
+    }
     @objc private func menuHonk()       { Goose?.PlaySound(.HONCC) }
     @objc private func menuNabMouse()   { Goose?.SetTask(.NabMouse, honck: false) }
     @objc private func menuWander()     { Goose?.SetTask(.Wander,   honck: false) }

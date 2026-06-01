@@ -19,6 +19,12 @@ final class MainStatusItemMenuManager: NSObject {
 
     /// Called when the dog should fetch an image (no commit today).
     var onNoCommitNudge: (() -> Void)?
+    /// Called once when we first detect today's commit — the dog celebrates
+    /// with a dad-joke speech bubble.
+    var onDidCommit: (() -> Void)?
+    // Tracks whether we've already celebrated today's commit, so the joke fires
+    // once per day (reset when today's square goes back to empty).
+    private var didCelebrateCommit = false
     /// Called when the user picks "Dog menu…" inside the popover.
     var onOpenGooseMenu: (() -> Void)?
     /// Called when contribution stats change, so the menu-bar icon can update.
@@ -172,9 +178,20 @@ final class MainStatusItemMenuManager: NSObject {
         guard !isAsleep else { return }
         guard model.isSignedIn, !model.isLoading, !model.days.isEmpty else { return }
         let invert = UserDefaults.standard.bool(forKey: "Gipet.testNudgeOnCommit")
-        let shouldFetch = invert ? model.stats.committedToday : !model.stats.committedToday
+        let committed = model.stats.committedToday
+        // First time today's commit shows up → dog tells a dad joke (once/day).
+        if committed {
+            if !didCelebrateCommit {
+                didCelebrateCommit = true
+                NSLog("[Gipet] committed today → dog tells a joke")
+                onDidCommit?()
+            }
+        } else {
+            didCelebrateCommit = false
+        }
+        let shouldFetch = invert ? committed : !committed
         if shouldFetch {
-            NSLog("[Gipet] trigger (invert=\(invert), committedToday=\(model.stats.committedToday)) → dog fetches an image")
+            NSLog("[Gipet] trigger (invert=\(invert), committedToday=\(committed)) → dog fetches an image")
             onNoCommitNudge?()
         }
     }
