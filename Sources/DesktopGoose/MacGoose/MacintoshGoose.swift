@@ -266,11 +266,7 @@ final class MacintoshGoose: Goose {
             let files = ((try? fm.contentsOfDirectory(atPath: memesDirectory)) ?? [])
                 .filter { !$0.hasPrefix(".") }
                 .map { (memesDirectory as NSString).appendingPathComponent($0) }
-            let customLocalMemes: [String] = [
-                "/Users/shinleehyeon/.cursor/projects/Users-shinleehyeon-Dev-Projects-gipet/assets/ChatGPT_Image_2026____5____29__________11_32_16-b21b4095-d9ea-410f-bb2f-b41f57d39c24.png"
-            ]
-            let localPool = files + customLocalMemes
-            let pool: [String] = localPool.isEmpty ? Goose.ImageUrls : localPool
+            let pool: [String] = files.isEmpty ? Goose.ImageUrls : files
             let text = pickAvoidingRepeat(pool, last: lastMemePath)
             lastMemePath = text
             url = text.hasPrefix("https://") ? URL(string: text) : URL(fileURLWithPath: text)
