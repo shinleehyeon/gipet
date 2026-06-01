@@ -19,6 +19,9 @@ final class MainStatusItemMenuManager: NSObject {
 
     /// Called when the dog should fetch an image (no commit today).
     var onNoCommitNudge: (() -> Void)?
+    /// Called when the dog should remind you to commit via a speech bubble
+    /// (no commit today) — fires more often than the fetch nudge.
+    var onNoCommitSay: (() -> Void)?
     /// Called once when we first detect today's commit — the dog celebrates
     /// with a dad-joke speech bubble.
     var onDidCommit: (() -> Void)?
@@ -32,6 +35,7 @@ final class MainStatusItemMenuManager: NSObject {
 
     private var refreshTimer: Timer?
     private var nudgeTimer: Timer?
+    private var sayTimer: Timer?
 
     // While the machine is asleep / display off / screen locked we don't nag.
     private var isAsleep = false
@@ -40,6 +44,8 @@ final class MainStatusItemMenuManager: NSObject {
     // today's square is still empty.
     private let refreshInterval: TimeInterval = 600
     private let nudgeInterval: TimeInterval = 180
+    // The "커밋해!" reminder bubble nags more often than the fetch nudge.
+    private let sayInterval: TimeInterval = 60
 
     func configurePopover() {
         let root = ContributionView(
@@ -142,6 +148,9 @@ final class MainStatusItemMenuManager: NSObject {
         nudgeTimer = Timer.scheduledTimer(withTimeInterval: nudgeInterval, repeats: true) { [weak self] _ in
             self?.checkAndNudge()
         }
+        sayTimer = Timer.scheduledTimer(withTimeInterval: sayInterval, repeats: true) { [weak self] _ in
+            self?.checkAndSay()
+        }
         // First nudge a little after launch so contributions have loaded.
         Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
             self?.checkAndNudge()
@@ -193,6 +202,18 @@ final class MainStatusItemMenuManager: NSObject {
         if shouldFetch {
             NSLog("[Gipet] trigger (invert=\(invert), committedToday=\(committed)) → dog fetches an image")
             onNoCommitNudge?()
+        }
+    }
+
+    /// Reminder bubble on its own (faster) cadence: if signed in and not
+    /// committed today, the dog says "커밋해!" — without fetching anything.
+    private func checkAndSay() {
+        guard !isAsleep else { return }
+        guard model.isSignedIn, !model.isLoading, !model.days.isEmpty else { return }
+        let invert = UserDefaults.standard.bool(forKey: "Gipet.testNudgeOnCommit")
+        let shouldSay = invert ? model.stats.committedToday : !model.stats.committedToday
+        if shouldSay {
+            onNoCommitSay?()
         }
     }
 }

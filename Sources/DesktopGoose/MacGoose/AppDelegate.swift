@@ -72,9 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // No commit today → send the dog to fetch something: randomly an
         // image (Memes/) or a note (Notes/).
         gipet.onNoCommitNudge = { [weak self] in
-            self?.Goose?.Say("커밋해! 🐾", duration: 5)
             let task: Goose.GooseTask = Bool.random() ? .CollectWindow_Meme : .CollectWindow_Notepad
             self?.Goose?.SetTask(task, honck: false)
+        }
+        // Commit reminder bubble — fires once a minute while you haven't committed.
+        gipet.onNoCommitSay = { [weak self] in
+            self?.Goose?.Say("커밋해! 🐾", duration: 5)
         }
         // Committed today → the dog tells a random dad joke (no immediate repeat).
         gipet.onDidCommit = { [weak self] in
