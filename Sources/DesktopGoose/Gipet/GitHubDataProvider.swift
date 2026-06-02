@@ -24,27 +24,34 @@ final class GitHubDataProvider {
 
     // MARK: - Contributions
 
-    /// Fetch the last ~year of contribution days for `login`.
+    /// Fetch the current calendar year's contribution days for `login`.
     ///
-    /// With a token we use the authenticated GraphQL `contributionsCollection`
-    /// API — it returns exact per-day counts for the trailing year, is
-    /// timezone-correct, includes *today* immediately, and includes private
-    /// contributions. The public HTML scrape (used only token-less) lags a day
-    /// at the right edge and omits private contributions.
+    /// We deliberately scrape the **public** contributions page (anonymously —
+    /// `APIClient.text` never sends the token) instead of the authenticated
+    /// GraphQL API. Reason: the GraphQL `contributionsCollection` seen through an
+    /// OAuth-app token *undercounts* — it omits commits to org/restricted repos
+    /// the app isn't approved for (measured: 624 vs the public 1306 over a
+    /// trailing year). The public page is exactly what visitors see, so our
+    /// numbers match the profile ("N contributions in <year>").
+    ///
+    /// Windowed to the current year via `?from=<year>-01-01&to=<year>-12-31`
+    /// (same query shape Git Streaks uses) so the total lines up with the
+    /// profile's default year view rather than a trailing-365-day sum.
+    ///
+    /// Tradeoff: the anonymous page is CDN-cached, so *today's* freshly-pushed
+    /// commits can lag a few minutes (today may briefly read 0). Private commits
+    /// never appear here at all — by design, since the public graph hides them.
     func fetchContributions(login: String) async throws -> [ContributionDay] {
-        if api.accessToken != nil {
-            if let days = try? await fetchViaGraphQL(), !days.isEmpty {
-                return days
-            }
-            // fall through to HTML if GraphQL fails
-        }
-        return try await fetchViaHTML(login: login)
+        try await fetchViaHTML(login: login, year: Self.currentYear)
     }
 
-    private func fetchViaHTML(login: String) async throws -> [ContributionDay] {
-        guard let url = URL(string: "https://github.com/users/\(login)/contributions") else {
-            throw APIError.badURL
-        }
+    private static var currentYear: Int {
+        Calendar.current.component(.year, from: Date())
+    }
+
+    private func fetchViaHTML(login: String, year: Int) async throws -> [ContributionDay] {
+        let path = "https://github.com/users/\(login)/contributions?from=\(year)-01-01&to=\(year)-12-31"
+        guard let url = URL(string: path) else { throw APIError.badURL }
         let html = try await api.text(url)
         let days = Self.parseContributions(html: html)
         guard !days.isEmpty else { throw APIError.decode("contributions must be not empty") }

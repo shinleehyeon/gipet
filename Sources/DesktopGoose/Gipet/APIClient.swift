@@ -25,19 +25,54 @@ final class APIClient {
     private let session: URLSession
     var accessToken: String?
 
+    // Per-URL ETag cache so high-frequency contribution polls send
+    // `If-None-Match` and get a cheap 304 when nothing changed — polite to
+    // GitHub and lowers the chance of tripping its abuse rate limit.
+    private var etagCache: [String: (etag: String, body: String)] = [:]
+    private let etagLock = NSLock()
+
     init(session: URLSession = .shared) {
         self.session = session
     }
 
-    /// Fetch raw text (used for the contributions HTML page).
+    /// Fetch raw text (used for the contributions HTML page). Transparently
+    /// revalidates with the stored ETag: on a 304 it returns the cached body,
+    /// otherwise it caches the fresh body + new ETag.
     func text(_ url: URL, accept: String = "text/html") async throws -> String {
+        let key = url.absoluteString
+        let cached = cachedETag(key)
+
         var req = URLRequest(url: url)
+        // Bypass URLSession's own cache so our manual conditional request is the
+        // one that reaches the origin (and we actually see the 304).
+        req.cachePolicy = .reloadIgnoringLocalCacheData
         req.setValue(accept, forHTTPHeaderField: "Accept")
         req.setValue("Gipet", forHTTPHeaderField: "User-Agent")
+        if let cached { req.setValue(cached.etag, forHTTPHeaderField: "If-None-Match") }
+
         let (data, resp) = try await session.data(for: req)
-        try Self.check(resp)
+        if let http = resp as? HTTPURLResponse {
+            if http.statusCode == 304, let cached { return cached.body }   // unchanged
+            guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
+            guard let s = String(data: data, encoding: .utf8), !s.isEmpty else { throw APIError.empty }
+            if let etag = http.value(forHTTPHeaderField: "Etag") {
+                storeETag(key, (etag, s))
+            }
+            return s
+        }
         guard let s = String(data: data, encoding: .utf8), !s.isEmpty else { throw APIError.empty }
         return s
+    }
+
+    // Synchronous lock helpers — keep NSLock out of the async `text` body
+    // (locking across an await is unsafe; the compiler enforces this in Swift 6).
+    private func cachedETag(_ key: String) -> (etag: String, body: String)? {
+        etagLock.lock(); defer { etagLock.unlock() }
+        return etagCache[key]
+    }
+    private func storeETag(_ key: String, _ value: (etag: String, body: String)) {
+        etagLock.lock(); defer { etagLock.unlock() }
+        etagCache[key] = value
     }
 
     /// Fetch + decode JSON, sending `Authorization: Bearer <token>` if set.

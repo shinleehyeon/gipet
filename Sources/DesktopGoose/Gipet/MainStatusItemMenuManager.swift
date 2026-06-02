@@ -43,9 +43,22 @@ final class MainStatusItemMenuManager: NSObject {
     // While the machine is asleep / display off / screen locked we don't nag.
     private var isAsleep = false
 
-    // Refresh contributions every 10 min; nudge the dog every 20 s while
-    // today's square is still empty.
-    private let refreshInterval: TimeInterval = 60
+    // How often we re-fetch contributions. Configurable like Git Streaks'
+    // `git-streaks-seconds-<login>` default — read from UserDefaults
+    // `Gipet.refreshSeconds`, clamped to a sane range. Default 5 min keeps the
+    // token-less HTML scrape well under GitHub's radar.
+    //   defaults write <bundle-id> Gipet.refreshSeconds -int 600
+    static let refreshSecondsKey = "Gipet.refreshSeconds"
+    private var refreshInterval: TimeInterval {
+        let stored = UserDefaults.standard.double(forKey: Self.refreshSecondsKey)
+        let seconds = stored > 0 ? stored : 300   // 0 == unset -> default 5 min
+        return min(max(seconds, 30), 3600)        // clamp 30 s … 1 hour
+        // 30 s floor is safe: the contributions page is github.com web (not the
+        // REST API, so the 60/hr limit doesn't apply) and ETag conditional
+        // requests mean unchanged polls cost a cheap 304. Below ~30 s risks
+        // GitHub's secondary/abuse rate limit (429 + temporary IP block).
+    }
+    // nudge the dog every few min while today's square is still empty.
     private let nudgeInterval: TimeInterval = 180
     // The "커밋해!" reminder bubble nags more often than the fetch nudge.
     private let sayInterval: TimeInterval = 60
