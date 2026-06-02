@@ -22,6 +22,8 @@ final class MainStatusItemMenuManager: NSObject {
     /// Called when the dog should remind you to commit via a speech bubble
     /// (no commit today) — fires more often than the fetch nudge.
     var onNoCommitSay: (() -> Void)?
+    /// Called on a recurring timer so the dog tells a random dad joke for fun.
+    var onTellJoke: (() -> Void)?
     /// Called once when we first detect today's commit — the dog celebrates
     /// with a dad-joke speech bubble.
     var onDidCommit: (() -> Void)?
@@ -36,16 +38,19 @@ final class MainStatusItemMenuManager: NSObject {
     private var refreshTimer: Timer?
     private var nudgeTimer: Timer?
     private var sayTimer: Timer?
+    private var jokeTimer: Timer?
 
     // While the machine is asleep / display off / screen locked we don't nag.
     private var isAsleep = false
 
     // Refresh contributions every 10 min; nudge the dog every 20 s while
     // today's square is still empty.
-    private let refreshInterval: TimeInterval = 600
+    private let refreshInterval: TimeInterval = 60
     private let nudgeInterval: TimeInterval = 180
     // The "커밋해!" reminder bubble nags more often than the fetch nudge.
     private let sayInterval: TimeInterval = 60
+    // How often the dog tells a random dad joke for fun.
+    private let jokeInterval: TimeInterval = 120
 
     func configurePopover() {
         let root = ContributionView(
@@ -150,6 +155,10 @@ final class MainStatusItemMenuManager: NSObject {
         }
         sayTimer = Timer.scheduledTimer(withTimeInterval: sayInterval, repeats: true) { [weak self] _ in
             self?.checkAndSay()
+        }
+        jokeTimer = Timer.scheduledTimer(withTimeInterval: jokeInterval, repeats: true) { [weak self] _ in
+            guard let self, !self.isAsleep else { return }
+            self.onTellJoke?()
         }
         // First nudge a little after launch so contributions have loaded.
         Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in

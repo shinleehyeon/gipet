@@ -344,9 +344,10 @@ class Goose {
         fatalError("abstract")
     }
 
-    // Show a speech bubble above the dog for `duration` seconds.
+    // Show a speech bubble above the dog for `duration` seconds. Every line the
+    // dog says ends with a "ㅋㅋ" for a cheeky tone.
     func Say(_ text: String, duration: Float = 4) {
-        speechText = text
+        speechText = text.hasSuffix("ㅋㅋ") ? text : text + "ㅋㅋ"
         speechExpireTime = Time.time + duration
     }
 

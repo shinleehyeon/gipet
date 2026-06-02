@@ -79,6 +79,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         gipet.onNoCommitSay = { [weak self] in
             self?.Goose?.Say("커밋해! 🐾", duration: 5)
         }
+        // Periodic dad joke for fun.
+        gipet.onTellJoke = { [weak self] in
+            let joke = DadJokes.random(avoiding: self?.lastJoke)
+            self?.lastJoke = joke
+            self?.Goose?.Say(joke, duration: 6)
+        }
         // Committed today → the dog tells a random dad joke (no immediate repeat).
         gipet.onDidCommit = { [weak self] in
             let joke = DadJokes.random(avoiding: self?.lastJoke)
