@@ -1,6 +1,7 @@
 .DS_Store
 .build/
 .swiftpm/
+Gipet.app/
 Package.resolved
 *.xcodeproj
 *.xcworkspace
