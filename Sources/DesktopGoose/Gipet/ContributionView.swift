@@ -59,13 +59,19 @@ struct ContributionView: View {
         .environment(\.colorScheme, .dark)
     }
 
+    /// The calendar year the contribution data covers (the fetch window is the
+    /// current year), shown in the "Total in <year>" stat label.
+    private var contributionYear: Int {
+        Calendar.current.component(.year, from: model.stats.firstDate ?? Date())
+    }
+
     private var signedIn: some View {
         VStack(alignment: .leading, spacing: 16) {
             ProfileHeaderView(model: model)
             ContributionGrid(days: model.days)
             HStack(alignment: .top, spacing: 20) {
                 StatsCard(title: "Contributions") {
-                    StatItem(label: "Total in the last year",
+                    StatItem(label: "Total in \(contributionYear)",
                              value: model.stats.totalLastYear.formatted(),
                              sub: rangeText(model.stats.firstDate, model.stats.lastDate, endYear: true))
                     StatItem(label: "Best day",
