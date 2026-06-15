@@ -20,8 +20,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // The goose reads memes/notes directly from these project folders.
     // Drop a PNG into MemesDirectory and the next time the goose runs a
     // CollectWindow_Meme task it will pick from the new file list.
-    static let ProjectMemesDir = "/Users/shinleehyeon/Dev/Projects/gipet/desktop-dog/Memes"
-    static let ProjectNotesDir = "/Users/shinleehyeon/Dev/Projects/gipet/desktop-dog/Notes"
+    // Resolve relative to the repo so forks/clones use their own checkout
+    // instead of a hardcoded /Users/<me> path. #filePath points at
+    // <repo>/desktop-dog/Sources/DesktopGoose/MacGoose/AppDelegate.swift,
+    // so four parent hops land on <repo>/desktop-dog.
+    static let ProjectRootDir: String = {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // MacGoose
+            .deletingLastPathComponent()   // DesktopGoose
+            .deletingLastPathComponent()   // Sources
+            .deletingLastPathComponent()   // desktop-dog
+            .path
+    }()
+    static let ProjectMemesDir = (ProjectRootDir as NSString).appendingPathComponent("Memes")
+    static let ProjectNotesDir = (ProjectRootDir as NSString).appendingPathComponent("Notes")
 
     var MemesDirectory: URL {
         URL(fileURLWithPath: AppDelegate.ProjectMemesDir, isDirectory: true)
