@@ -233,6 +233,14 @@ class Goose {
     // Click-to-rest: when true the dog sits still and ignores wandering/tasks.
     var isResting: Bool = false
 
+    // Autonomous sitting: every so often the dog sits down on its own for a few
+    // seconds and then stands back up. A *manual* rest (user tap) leaves
+    // isRestingAuto == false, so it never stands up on its own — only another tap
+    // wakes it.
+    var isRestingAuto: Bool = false
+    private var autoRestEndTime: Float = 0
+    private var nextAutoSitTime: Float = 0
+
     // Press-and-drag: hold the dog and move the cursor to carry it. A quick tap
     // (no drag) instead toggles resting.
     var isGrabbed: Bool = false
@@ -372,6 +380,7 @@ class Goose {
             if !isGrabbed && Vector2.Distance(cursor, grabStartCursor) > 6 {
                 isGrabbed = true
                 isResting = false
+                isRestingAuto = false
             }
             if isGrabbed {
                 position = cursor + grabOffset
@@ -385,8 +394,10 @@ class Goose {
                 targetPos = position
                 SetTask(.Wander, honck: false)
             } else if mouseDownOnDog {
-                // A tap → toggle sit/stop.
+                // A tap → toggle sit/stop. A manual sit never stands up on its
+                // own; only another tap wakes it.
                 isResting.toggle()
+                isRestingAuto = false
                 velocity = .zero
                 if isResting { targetPos = position } else { SetTask(.Wander, honck: false) }
             }
@@ -401,13 +412,36 @@ class Goose {
             return
         }
         // While resting, freeze in place: no AI, no movement — just keep the rig
-        // solved so the sitting pose renders cleanly.
+        // solved so the sitting pose renders cleanly. An autonomous sit stands
+        // back up once its timer elapses; a manual sit waits for another tap.
         if isResting {
+            if isRestingAuto && Time.time > autoRestEndTime {
+                isResting = false
+                isRestingAuto = false
+                SetTask(.Wander, honck: false)
+            } else {
+                velocity = .zero
+                targetPos = position
+                SolveFeet()
+                return
+            }
+        }
+
+        // Every so often, sit down on our own for a few seconds (only while
+        // calmly wandering — don't interrupt a meme fetch or a mouse nab).
+        if nextAutoSitTime == 0 {
+            nextAutoSitTime = Time.time + SamMath.RandomRange(15, 35)
+        } else if currentTask == .Wander && Time.time > nextAutoSitTime {
+            isResting = true
+            isRestingAuto = true
             velocity = .zero
             targetPos = position
+            autoRestEndTime = Time.time + SamMath.RandomRange(3, 8)
+            nextAutoSitTime = Time.time + SamMath.RandomRange(25, 55)
             SolveFeet()
             return
         }
+
         targetDirection = Vector2.Normalize(targetPos - position)
         overrideExtendNeck = false
         RunAI()
