@@ -13,6 +13,25 @@ enum GipetTheme {
     static let green    = Color(red: 0.22, green: 0.83, blue: 0.33)      // accent numbers
     static let bubble   = Color(red: 0.16, green: 0.18, blue: 0.20)
 
+    // A soft top-to-bottom wash so the popover doesn't read as a flat system sheet.
+    static let bgGradient = LinearGradient(
+        colors: [Color(red: 0.11, green: 0.125, blue: 0.145),
+                 Color(red: 0.075, green: 0.085, blue: 0.10)],
+        startPoint: .top, endPoint: .bottom)
+
+    // Card fill + hairline edge give the stat cards a bit of lift off the bg.
+    static let cardGradient = LinearGradient(
+        colors: [Color(red: 0.155, green: 0.172, blue: 0.195),
+                 Color(red: 0.118, green: 0.132, blue: 0.152)],
+        startPoint: .top, endPoint: .bottom)
+    static let hairline = Color.white.opacity(0.07)
+
+    // A subtle vertical sheen for the big accent numbers.
+    static let greenGradient = LinearGradient(
+        colors: [Color(red: 0.33, green: 0.90, blue: 0.44),
+                 Color(red: 0.16, green: 0.74, blue: 0.30)],
+        startPoint: .top, endPoint: .bottom)
+
     // GitHub dark contribution palette, index 0...4.
     static let levelColors: [Color] = [
         Color(red: 0.17, green: 0.19, blue: 0.22),   // 0 — empty
@@ -55,7 +74,8 @@ struct ContributionView: View {
                 signedOut.frame(width: 360)
             }
         }
-        .background(GipetTheme.bg)
+        .background(GipetTheme.bgGradient)
+        .fontDesign(.rounded)
         .environment(\.colorScheme, .dark)
     }
 
@@ -210,12 +230,13 @@ struct ProfileHeaderView: View {
 
     private var committedBadge: some View {
         let done = model.stats.committedToday
+        let accent = done ? GipetTheme.green : Color.orange
         return Text(done ? "Committed today ✓" : "No commit yet 🐕")
-            .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .background((done ? GipetTheme.green : .orange).opacity(0.18))
-            .foregroundColor(done ? GipetTheme.green : .orange)
-            .clipShape(Capsule())
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(accent.opacity(0.16), in: Capsule())
+            .overlay(Capsule().strokeBorder(accent.opacity(0.45), lineWidth: 1))
+            .foregroundColor(accent)
     }
 
     private func openProfile() {
@@ -354,7 +375,12 @@ struct StatsCard<Content: View>: View {
             HStack(alignment: .top, spacing: 28) { content }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 10).fill(GipetTheme.card))
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(GipetTheme.cardGradient)
+                        .overlay(RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(GipetTheme.hairline, lineWidth: 1))
+                )
         }
     }
 }
@@ -369,7 +395,8 @@ struct StatItem: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label).font(.system(size: 12, weight: .semibold))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value).font(.system(size: 22, weight: .bold)).foregroundColor(GipetTheme.green)
+                Text(value).font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(GipetTheme.greenGradient)
                 if let unit { Text(unit).font(.system(size: 14)).foregroundColor(.secondary) }
             }
             if let sub { Text(sub).font(.system(size: 11)).foregroundColor(.secondary) }

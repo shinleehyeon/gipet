@@ -3,14 +3,12 @@
 import Foundation
 
 enum CharacterKind: String, CaseIterable, Identifiable {
-    case goose
     case chick
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .goose: return "Goose 🪿"
         case .chick: return "Dachshund 🐕"
         }
     }

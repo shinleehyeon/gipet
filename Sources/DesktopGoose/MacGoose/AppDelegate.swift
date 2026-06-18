@@ -252,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func refreshTitle() {
-        let charEmoji = CharacterSettings.shared.current == .goose ? "🪿" : "🐕"
+        let charEmoji = "🐕"
         let vm = GipetViewModel.shared
         if vm.isSignedIn, !vm.days.isEmpty {
             // Today's grass square (GitHub colors) + today's commit count.

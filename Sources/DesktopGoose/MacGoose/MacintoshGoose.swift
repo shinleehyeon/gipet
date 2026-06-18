@@ -93,10 +93,6 @@ final class MacintoshGoose: Goose {
         gooseView?.removeFromSuperview()
         let view: NSView
         switch kind {
-        case .goose:
-            let v = GooseView()
-            v.goose = self
-            view = v
         case .chick:
             let v = ChickCharacterView()
             v.goose = self
