@@ -61,10 +61,6 @@ struct ContributionView: View {
     var onOpenGooseMenu: () -> Void = {}
     var onQuit: () -> Void = {}
 
-    @State private var usernameField = ""
-    @State private var tokenField = ""
-    @State private var showToken = false
-
     var body: some View {
         Group {
             if model.isSignedIn {
@@ -150,37 +146,31 @@ struct ContributionView: View {
     // MARK: signed-out
 
     private var signedOut: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 18) {
             Text("Gipet").font(.system(size: 22, weight: .bold)).foregroundColor(GipetTheme.ink)
-            Text("Track your GitHub streak. Your dog fetches an image\nwhenever you haven't committed today. 🐕")
-                .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
-                .multilineTextAlignment(.center)
-            HStack(spacing: 6) {
-                TextField("GitHub username", text: $usernameField)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { model.track(username: usernameField) }
-                Button("Track") { model.track(username: usernameField) }
-                    .disabled(usernameField.trimmingCharacters(in: .whitespaces).isEmpty)
+
+            VStack(spacing: 14) {
+                LoginBubble(text: "Github 계정으로 로그인")
+                Button(action: { model.signIn() }) {
+                    ZStack {
+                        Circle().fill(Color.black)
+                        GitHubMark(color: .white).frame(width: 56, height: 56)
+                    }
+                    .frame(width: 104, height: 104)
+                }
+                .buttonStyle(.plain)
+                .help("GitHub 계정으로 로그인 (OAuth)")
             }
-            Button(action: { model.signIn() }) {
-                Label("Log In with GitHub", systemImage: "person.crop.circle")
-                    .frame(maxWidth: .infinity)
-            }
-            .controlSize(.large).buttonStyle(.borderedProminent).tint(GipetTheme.green)
-            DisclosureGroup("Use a token (optional — for private contributions)", isExpanded: $showToken) {
-                VStack(spacing: 6) {
-                    SecureField("ghp_… personal access token", text: $tokenField)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Use token") { model.useToken(tokenField) }
-                        .disabled(tokenField.trimmingCharacters(in: .whitespaces).isEmpty)
-                }.padding(.top, 4)
-            }.font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
+            .padding(.vertical, 6)
+
             if let err = model.errorText {
                 Text(err).font(.system(size: 10)).foregroundColor(.red).lineLimit(3)
+                    .multilineTextAlignment(.center)
             }
-            Button("Quit", action: onQuit).font(.system(size: 11))
+            Button("Quit", action: onQuit)
+                .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
         }
-        .padding(20)
+        .padding(28)
     }
 }
 

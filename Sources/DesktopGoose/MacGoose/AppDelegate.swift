@@ -230,10 +230,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     // Pill-shaped status item: [dot] [7 day bars] [today count].
-    //   dot   — green if committed today, red if not
+    //   dot   — green if committed today, red if not, neutral gray when logged out
     //   bars  — last 7 days, colored by each day's contribution level (0 = faint)
-    //   count — today's commit count (0 when none)
-    private func statusBarImage(levels: [Int], todayCount: Int,
+    //   count — today's commit count; nil (logged out) draws an empty pill, no number
+    private func statusBarImage(levels: [Int], count: Int?,
                                 committed: Bool, isDark: Bool) -> NSImage {
         // Layout metrics. `s` scales the whole pill — bump it to grow the icon
         // (capped by the menu-bar thickness, which downsizes anything taller).
@@ -254,10 +254,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             NSColor(srgbRed: 0.188, green: 0.631, blue: 0.306, alpha: 1), // #30a14e
             NSColor(srgbRed: 0.129, green: 0.431, blue: 0.224, alpha: 1), // #216e39
         ]
-        let dotColor = committed
-            ? (isDark ? NSColor(srgbRed: 0.247, green: 0.725, blue: 0.314, alpha: 1)   // #3fb950
-                      : NSColor(srgbRed: 0.180, green: 0.643, blue: 0.310, alpha: 1))  // #2ea44f
-            : NSColor(srgbRed: 0.941, green: 0.333, blue: 0.420, alpha: 1)             // #f0556b
+        let dotColor: NSColor
+        if count == nil {
+            dotColor = isDark ? NSColor(white: 1, alpha: 0.40) : NSColor(white: 0, alpha: 0.32)  // logged out
+        } else if committed {
+            dotColor = isDark ? NSColor(srgbRed: 0.247, green: 0.725, blue: 0.314, alpha: 1)     // #3fb950
+                              : NSColor(srgbRed: 0.180, green: 0.643, blue: 0.310, alpha: 1)      // #2ea44f
+        } else {
+            dotColor = NSColor(srgbRed: 0.941, green: 0.333, blue: 0.420, alpha: 1)               // #f0556b
+        }
         let textColor = isDark ? NSColor(white: 0.957, alpha: 1) : NSColor(white: 0.114, alpha: 1)
         let pillFill   = isDark ? NSColor(white: 1, alpha: 0.10) : NSColor(white: 0, alpha: 0.05)
         let pillStroke = isDark ? NSColor(white: 1, alpha: 0.20) : NSColor(white: 0, alpha: 0.12)
@@ -271,13 +276,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             return base
         }()
-        let numStr = "\(todayCount)" as NSString
         let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
-        let numSize = numStr.size(withAttributes: attrs)
+        let numStr: NSString? = count.map { "\($0)" as NSString }
+        let numSize = numStr?.size(withAttributes: attrs) ?? .zero
 
         let barsEndX = barsStartX + CGFloat(6) * advance + barW   // 7 bars
         let numStartX = barsEndX + 5 * s
-        let pillRight = numStartX + numSize.width + 7 * s
+        // Logged out (no number) → pill ends just after the bars.
+        let pillRight = numStr == nil ? barsEndX + 6 * s : numStartX + numSize.width + 7 * s
         let W = pillRight + 1 * s
 
         let img = NSImage(size: NSSize(width: ceil(W), height: H))
@@ -302,8 +308,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                          xRadius: 1.3 * s, yRadius: 1.3 * s).fill()
         }
 
-        // Today's commit count.
-        numStr.draw(at: NSPoint(x: numStartX, y: (H - numSize.height) / 2), withAttributes: attrs)
+        // Today's commit count (skipped when logged out).
+        numStr?.draw(at: NSPoint(x: numStartX, y: (H - numSize.height) / 2), withAttributes: attrs)
 
         img.unlockFocus()
         img.isTemplate = false   // keep real colors, not monochrome
@@ -326,14 +332,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let isDark = button.effectiveAppearance
                 .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             button.image = statusBarImage(levels: recent7Levels(vm),
-                                          todayCount: vm.stats.todayCount,
+                                          count: vm.stats.todayCount,
                                           committed: vm.stats.committedToday,
                                           isDark: isDark)
             button.imagePosition = .imageOnly
             button.title = ""
-        } else {
-            statusItem?.button?.image = nil
-            statusItem?.button?.title = "🐕"
+        } else if let button = statusItem?.button {
+            // Logged out → the same pill, but empty (gray bars, neutral dot, no number).
+            let isDark = button.effectiveAppearance
+                .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            button.image = statusBarImage(levels: Array(repeating: 0, count: 7),
+                                          count: nil, committed: false, isDark: isDark)
+            button.imagePosition = .imageOnly
+            button.title = ""
         }
         gooseMenu?.items.forEach { mi in
             if let raw = mi.representedObject as? String,
