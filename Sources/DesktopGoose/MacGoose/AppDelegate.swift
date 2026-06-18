@@ -235,12 +235,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     //   count — today's commit count (0 when none)
     private func statusBarImage(levels: [Int], todayCount: Int,
                                 committed: Bool, isDark: Bool) -> NSImage {
-        // Layout metrics (image points; menu-bar height ≈ 18).
-        let H: CGFloat = 18
-        let pillX: CGFloat = 1
-        let dotR: CGFloat = 3, dotCX: CGFloat = 9.5
-        let barW: CGFloat = 3.6, advance: CGFloat = 5.4, barH: CGFloat = 10
-        let barsStartX: CGFloat = 16
+        // Layout metrics. `s` scales the whole pill — bump it to grow the icon
+        // (capped by the menu-bar thickness, which downsizes anything taller).
+        let s: CGFloat = 1.2
+        let H: CGFloat = 18 * s
+        let pillX: CGFloat = 1 * s
+        let dotR: CGFloat = 3 * s, dotCX: CGFloat = 9.5 * s
+        let barW: CGFloat = 3.6 * s, advance: CGFloat = 5.4 * s, barH: CGFloat = 10 * s
+        let barsStartX: CGFloat = 16 * s
         let cy = H / 2
 
         // GitHub contribution palette (level 0…4); 0 = faint placeholder.
@@ -261,10 +263,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let pillStroke = isDark ? NSColor(white: 1, alpha: 0.20) : NSColor(white: 0, alpha: 0.12)
 
         // Number font — rounded heavy, like the mockup's Baloo 2.
-        let base = NSFont.systemFont(ofSize: 11.5, weight: .heavy)
+        let fontSize: CGFloat = 11.5 * s
+        let base = NSFont.systemFont(ofSize: fontSize, weight: .heavy)
         let font: NSFont = {
             if let d = base.fontDescriptor.withDesign(.rounded) {
-                return NSFont(descriptor: d, size: 11.5) ?? base
+                return NSFont(descriptor: d, size: fontSize) ?? base
             }
             return base
         }()
@@ -273,16 +276,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let numSize = numStr.size(withAttributes: attrs)
 
         let barsEndX = barsStartX + CGFloat(6) * advance + barW   // 7 bars
-        let numStartX = barsEndX + 5
-        let pillRight = numStartX + numSize.width + 7
-        let W = pillRight + 1
+        let numStartX = barsEndX + 5 * s
+        let pillRight = numStartX + numSize.width + 7 * s
+        let W = pillRight + 1 * s
 
         let img = NSImage(size: NSSize(width: ceil(W), height: H))
         img.lockFocus()
 
         // Pill background.
-        let pill = NSBezierPath(roundedRect: NSRect(x: pillX, y: 1.5, width: pillRight - pillX, height: H - 3),
-                                xRadius: 7.5, yRadius: 7.5)
+        let pill = NSBezierPath(roundedRect: NSRect(x: pillX, y: 1.5 * s, width: pillRight - pillX, height: H - 3 * s),
+                                xRadius: 7.5 * s, yRadius: 7.5 * s)
         pillFill.setFill(); pill.fill()
         pillStroke.setStroke(); pill.lineWidth = 1; pill.stroke()
 
@@ -296,7 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             levelColors[lvl].setFill()
             let x = barsStartX + CGFloat(i) * advance
             NSBezierPath(roundedRect: NSRect(x: x, y: cy - barH / 2, width: barW, height: barH),
-                         xRadius: 1.3, yRadius: 1.3).fill()
+                         xRadius: 1.3 * s, yRadius: 1.3 * s).fill()
         }
 
         // Today's commit count.
