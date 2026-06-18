@@ -1,36 +1,23 @@
-// Gipet — popover UI (wide dark layout).
-//   ContributionView { ProfileHeaderView, ContributionGrid, StatsView }
+// Gipet — popover UI (warm cream two-column layout).
+//   ContributionView { PetSidebar | (ProfileHeader, Grid, StatPills, Repos, footer) }
 // Hovering a square grows it and shows an "N contributions on <date>" bubble.
 
 import SwiftUI
 import AppKit
 
-// MARK: - Theme
+// MARK: - Theme (warm cream / light)
 
 enum GipetTheme {
-    static let bg       = Color(red: 0.094, green: 0.106, blue: 0.122)   // popover background
-    static let card     = Color(red: 0.13, green: 0.145, blue: 0.165)    // stat-card background
-    static let green    = Color(red: 0.22, green: 0.83, blue: 0.33)      // accent numbers
-    static let bubble   = Color(red: 0.16, green: 0.18, blue: 0.20)
-
-    // A soft top-to-bottom wash so the popover doesn't read as a flat system sheet.
-    static let bgGradient = LinearGradient(
-        colors: [Color(red: 0.11, green: 0.125, blue: 0.145),
-                 Color(red: 0.075, green: 0.085, blue: 0.10)],
-        startPoint: .top, endPoint: .bottom)
-
-    // Card fill + hairline edge give the stat cards a bit of lift off the bg.
-    static let cardGradient = LinearGradient(
-        colors: [Color(red: 0.155, green: 0.172, blue: 0.195),
-                 Color(red: 0.118, green: 0.132, blue: 0.152)],
-        startPoint: .top, endPoint: .bottom)
-    static let hairline = Color.white.opacity(0.07)
-
-    // A subtle vertical sheen for the big accent numbers.
-    static let greenGradient = LinearGradient(
-        colors: [Color(red: 0.33, green: 0.90, blue: 0.44),
-                 Color(red: 0.16, green: 0.74, blue: 0.30)],
-        startPoint: .top, endPoint: .bottom)
+    static let pageBg      = Color(red: 0.063, green: 0.072, blue: 0.086)  // darkest, behind the card
+    static let cardBg      = Color(red: 0.094, green: 0.106, blue: 0.122)  // popover background
+    static let panel       = Color(red: 0.145, green: 0.160, blue: 0.182)  // inner panels / cells bg
+    static let panelBorder = Color.white.opacity(0.08)                     // hairline on panels
+    static let green       = Color(red: 0.220, green: 0.830, blue: 0.330)  // accent
+    static let greenSoft   = Color(red: 0.125, green: 0.300, blue: 0.180)  // mint badge bg (dark)
+    static let orange      = Color(red: 0.950, green: 0.600, blue: 0.250)  // "no commit" / dirty
+    static let ink         = Color(red: 0.918, green: 0.933, blue: 0.945)  // primary text
+    static let inkSoft     = Color(red: 0.600, green: 0.624, blue: 0.667)  // secondary text
+    static let bubble      = Color(red: 0.160, green: 0.180, blue: 0.200)
 
     // GitHub dark contribution palette, index 0...4.
     static let levelColors: [Color] = [
@@ -41,6 +28,13 @@ enum GipetTheme {
         Color(red: 0.22, green: 0.83, blue: 0.33),   // 4
     ]
     static func color(level: Int) -> Color { levelColors[max(0, min(4, level))] }
+
+    static func panelBg(_ radius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: radius)
+            .fill(panel)
+            .overlay(RoundedRectangle(cornerRadius: radius)
+                .strokeBorder(panelBorder, lineWidth: 1))
+    }
 }
 
 // MARK: - Layout constants
@@ -53,6 +47,11 @@ private enum Grid {
     static let monthRow: CGFloat = 16                 // month-label row height
     static let monthGap: CGFloat = 4                  // gap below month labels
     static var squaresTop: CGFloat { monthRow + monthGap }
+}
+
+private enum Layout {
+    static let pad: CGFloat = 22
+    static let main: CGFloat = 600
 }
 
 // MARK: - Root
@@ -74,13 +73,13 @@ struct ContributionView: View {
                 signedOut.frame(width: 360)
             }
         }
-        .background(GipetTheme.bgGradient)
+        .background(GipetTheme.cardBg)
         .fontDesign(.rounded)
         .environment(\.colorScheme, .dark)
     }
 
     /// The calendar year the contribution data covers (the fetch window is the
-    /// current year), shown in the "Total in <year>" stat label.
+    /// current year), shown in the "Total <year>" stat label.
     private var contributionYear: Int {
         Calendar.current.component(.year, from: model.stats.firstDate ?? Date())
     }
@@ -89,39 +88,32 @@ struct ContributionView: View {
         VStack(alignment: .leading, spacing: 16) {
             ProfileHeaderView(model: model)
             ContributionGrid(days: model.days)
-            HStack(alignment: .top, spacing: 20) {
-                StatsCard(title: "Contributions") {
-                    StatItem(label: "Total in \(contributionYear)",
-                             value: model.stats.totalLastYear.formatted(),
-                             sub: rangeText(model.stats.firstDate, model.stats.lastDate, endYear: true))
-                    StatItem(label: "Best day",
-                             value: "\(model.stats.bestDay)",
-                             sub: fmt(model.stats.bestDayDate, "MMM d, yyyy"))
-                    StatItem(label: "Average",
-                             value: String(format: "%.2f", model.stats.average),
-                             unit: "/ day")
-                }
-                StatsCard(title: "Streaks") {
-                    StatItem(label: "Longest streak",
-                             value: "\(model.stats.longestStreak)", unit: "days",
-                             sub: rangeText(model.stats.longestStart, model.stats.longestEnd, endYear: true))
-                    StatItem(label: "Current streak",
-                             value: "\(model.stats.currentStreak)", unit: "days",
-                             sub: rangeText(model.stats.currentStart, model.stats.currentEnd, endYear: true))
-                }
-            }
+            statPills
             ReposSection(model: model)
             footer
         }
-        .padding(20)
-        .frame(width: contentWidth)
+        .frame(width: Layout.main, alignment: .leading)
+        .padding(Layout.pad)
     }
 
-    /// Popover width: sized to the full year grid (the custom status-item
-    /// window handles on-screen positioning).
-    private var contentWidth: CGFloat {
-        let weeks = weekColumns(model.days).count
-        return 40 + 26 + 4 + CGFloat(max(weeks, 1)) * Grid.advance
+    private var statPills: some View {
+        HStack(alignment: .top, spacing: 12) {
+            StatPill(label: "Total \(contributionYear)",
+                     value: model.stats.totalLastYear.formatted(),
+                     sub: rangeText(model.stats.firstDate, model.stats.lastDate, endYear: true))
+            StatPill(label: "Best day",
+                     value: "\(model.stats.bestDay)",
+                     sub: fmt(model.stats.bestDayDate, "MMM d, yyyy"))
+            StatPill(label: "Average",
+                     value: String(format: "%.2f", model.stats.average),
+                     unit: "/ day")
+            StatPill(label: "Longest",
+                     value: "\(model.stats.longestStreak)", unit: "days",
+                     sub: rangeText(model.stats.longestStart, model.stats.longestEnd, endYear: false))
+            StatPill(label: "Current",
+                     value: "\(model.stats.currentStreak)", unit: "days",
+                     sub: rangeText(model.stats.currentStart, model.stats.currentEnd, endYear: false))
+        }
     }
 
     // MARK: footer
@@ -130,34 +122,38 @@ struct ContributionView: View {
         HStack {
             Button(action: { model.refresh() }) {
                 Label("Refresh", systemImage: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(GipetTheme.green)
             }
             .buttonStyle(.plain)
             if model.isLoading { ProgressView().controlSize(.small) }
             Spacer()
             if let updated = model.lastUpdated {
                 (Text("Updated ") + Text(updated, style: .relative))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundColor(GipetTheme.inkSoft)
             }
-            Menu("⚙") {
+            Menu {
                 Button("Dog menu…", action: onOpenGooseMenu)
                 Button("Sign out") { model.signOut() }
                 Divider()
                 Button("Quit", action: onQuit)
+            } label: {
+                Image(systemName: "gearshape.fill").foregroundColor(GipetTheme.inkSoft)
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .fixedSize()
         }
-        .font(.system(size: 12))
     }
 
     // MARK: signed-out
 
     private var signedOut: some View {
         VStack(spacing: 12) {
-            Text("Gipet").font(.system(size: 22, weight: .bold))
+            Text("Gipet").font(.system(size: 22, weight: .bold)).foregroundColor(GipetTheme.ink)
             Text("Track your GitHub streak. Your dog fetches an image\nwhenever you haven't committed today. 🐕")
-                .font(.system(size: 11)).foregroundColor(.secondary)
+                .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
                 .multilineTextAlignment(.center)
             HStack(spacing: 6) {
                 TextField("GitHub username", text: $usernameField)
@@ -170,7 +166,7 @@ struct ContributionView: View {
                 Label("Log In with GitHub", systemImage: "person.crop.circle")
                     .frame(maxWidth: .infinity)
             }
-            .controlSize(.large).buttonStyle(.borderedProminent)
+            .controlSize(.large).buttonStyle(.borderedProminent).tint(GipetTheme.green)
             DisclosureGroup("Use a token (optional — for private contributions)", isExpanded: $showToken) {
                 VStack(spacing: 6) {
                     SecureField("ghp_… personal access token", text: $tokenField)
@@ -178,7 +174,7 @@ struct ContributionView: View {
                     Button("Use token") { model.useToken(tokenField) }
                         .disabled(tokenField.trimmingCharacters(in: .whitespaces).isEmpty)
                 }.padding(.top, 4)
-            }.font(.system(size: 11))
+            }.font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
             if let err = model.errorText {
                 Text(err).font(.system(size: 10)).foregroundColor(.red).lineLimit(3)
             }
@@ -186,9 +182,6 @@ struct ContributionView: View {
         }
         .padding(20)
     }
-
-    // MARK: helpers
-
 }
 
 // MARK: - Profile header
@@ -203,9 +196,10 @@ struct ProfileHeaderView: View {
                     avatar
                     VStack(alignment: .leading, spacing: 1) {
                         Text(model.user?.displayName ?? "—")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(GipetTheme.ink)
                         if let login = model.user?.login {
-                            Text(login).font(.system(size: 14)).foregroundColor(.secondary)
+                            Text("@\(login)").font(.system(size: 14)).foregroundColor(GipetTheme.inkSoft)
                         }
                     }
                 }
@@ -217,26 +211,39 @@ struct ProfileHeaderView: View {
         }
     }
 
-    private var avatar: some View {
-        Group {
-            if let img = model.avatar {
-                Image(nsImage: img).resizable()
-            } else {
-                Image(systemName: "person.crop.circle.fill").resizable().foregroundColor(.secondary)
-            }
-        }
-        .frame(width: 52, height: 52).clipShape(Circle())
-    }
-
     private var committedBadge: some View {
         let done = model.stats.committedToday
-        let accent = done ? GipetTheme.green : Color.orange
+        let accent = done ? GipetTheme.green : GipetTheme.orange
         return Text(done ? "Committed today ✓" : "No commit yet 🐕")
             .font(.system(size: 12, weight: .semibold))
             .padding(.horizontal, 12).padding(.vertical, 6)
             .background(accent.opacity(0.16), in: Capsule())
             .overlay(Capsule().strokeBorder(accent.opacity(0.45), lineWidth: 1))
             .foregroundColor(accent)
+    }
+
+    private var initials: String {
+        let name = model.user?.displayName ?? "?"
+        let parts = name.split(separator: " ").prefix(2)
+        let s = parts.compactMap { $0.first }.map(String.init).joined()
+        return s.isEmpty ? "?" : s.uppercased()
+    }
+
+    private var avatar: some View {
+        Group {
+            if let img = model.avatar {
+                Image(nsImage: img).resizable()
+            } else {
+                ZStack {
+                    LinearGradient(colors: [Color(red: 1.0, green: 0.74, blue: 0.55),
+                                            Color(red: 0.96, green: 0.55, blue: 0.36)],
+                                   startPoint: .top, endPoint: .bottom)
+                    Text(initials).font(.system(size: 18, weight: .bold)).foregroundColor(.white)
+                }
+            }
+        }
+        .frame(width: 56, height: 56).clipShape(Circle())
+        .overlay(Circle().strokeBorder(Color.white.opacity(0.7), lineWidth: 2))
     }
 
     private func openProfile() {
@@ -266,28 +273,28 @@ struct ContributionGrid: View {
         let gridW = CGFloat(max(weeks.count, 1)) * Grid.advance
         let gridH = Grid.squaresTop + 7 * Grid.advance
 
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 4) {
                 // Fixed weekday-label column (stays put while the grid scrolls).
                 ZStack(alignment: .topLeading) {
                     ForEach(0..<7, id: \.self) { row in
                         if !weekdayNames[row].isEmpty {
                             Text(weekdayNames[row])
-                                .font(.system(size: 10)).foregroundColor(.secondary)
+                                .font(.system(size: 10, weight: .semibold)).foregroundColor(GipetTheme.inkSoft)
                                 .offset(y: Grid.squaresTop + CGFloat(row) * Grid.advance - 2)
                         }
                     }
                 }
-                .frame(width: 26, height: gridH, alignment: .topLeading)
+                .frame(width: 30, height: gridH, alignment: .topLeading)
 
                 // Scrollable squares (auto-scrolled to the most recent week).
                 ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal, showsIndicators: true) {
                         ZStack(alignment: .topLeading) {
                             ForEach(monthStarts, id: \.col) { ms in
                                 Text(ms.label)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(GipetTheme.inkSoft)
                                     .offset(x: CGFloat(ms.col) * Grid.advance, y: 0)
                             }
                             ForEach(Array(weeks.enumerated()), id: \.offset) { col, week in
@@ -295,11 +302,11 @@ struct ContributionGrid: View {
                                     if row < week.count, week[row].count >= 0 {
                                         let day = week[row]
                                         let isHot = hovered == HoverCell(col: col, row: row, day: day)
-                                        RoundedRectangle(cornerRadius: 2)
+                                        RoundedRectangle(cornerRadius: 3)
                                             .fill(GipetTheme.color(level: day.level))
                                             .frame(width: Grid.cell, height: Grid.cell)
                                             .scaleEffect(isHot ? 1.8 : 1.0)
-                                            .shadow(color: .black.opacity(isHot ? 0.5 : 0), radius: 3)
+                                            .shadow(color: .black.opacity(isHot ? 0.3 : 0), radius: 3)
                                             .offset(x: CGFloat(col) * Grid.advance,
                                                     y: Grid.squaresTop + CGFloat(row) * Grid.advance)
                                             .zIndex(isHot ? 2 : 0)
@@ -328,6 +335,8 @@ struct ContributionGrid: View {
             }
             legend.frame(maxWidth: .infinity, alignment: .trailing)
         }
+        .padding(16)
+        .background(GipetTheme.panelBg(18))
     }
 
     private func tooltip(for day: ContributionDay) -> some View {
@@ -338,69 +347,175 @@ struct ContributionGrid: View {
             .foregroundColor(.white)
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(RoundedRectangle(cornerRadius: 7).fill(GipetTheme.bubble))
-            .shadow(color: .black.opacity(0.4), radius: 4)
+            .shadow(color: .black.opacity(0.45), radius: 4)
             .fixedSize()
     }
 
     private func tooltipX(_ col: Int, width: CGFloat) -> CGFloat {
         let raw = Grid.leading + CGFloat(col) * Grid.advance + Grid.cell / 2
-        // Keep enough horizontal padding for longer text like
-        // "7 contributions on May 30, 2026" so it doesn't clip at edges.
         let safeInset: CGFloat = 130
         return min(max(raw, safeInset), width - safeInset)
     }
 
     private var legend: some View {
         HStack(spacing: 4) {
-            Text("Less").font(.system(size: 10)).foregroundColor(.secondary)
+            Text("Less").font(.system(size: 10, weight: .semibold)).foregroundColor(GipetTheme.inkSoft)
             ForEach(0..<5, id: \.self) { lvl in
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(GipetTheme.color(level: lvl))
                     .frame(width: Grid.cell, height: Grid.cell)
             }
-            Text("More").font(.system(size: 10)).foregroundColor(.secondary)
+            Text("More").font(.system(size: 10, weight: .semibold)).foregroundColor(GipetTheme.inkSoft)
         }
     }
 }
 
-// MARK: - Stats cards
+// MARK: - Stat pills
 
-struct StatsCard<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 18, weight: .bold))
-            HStack(alignment: .top, spacing: 28) { content }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(GipetTheme.cardGradient)
-                        .overlay(RoundedRectangle(cornerRadius: 14)
-                            .strokeBorder(GipetTheme.hairline, lineWidth: 1))
-                )
-        }
-    }
-}
-
-struct StatItem: View {
+struct StatPill: View {
     let label: String
     let value: String
     var unit: String? = nil
     var sub: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(.system(size: 12, weight: .semibold))
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.system(size: 12, weight: .semibold)).foregroundColor(GipetTheme.inkSoft)
+                .lineLimit(1)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value).font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(GipetTheme.greenGradient)
-                if let unit { Text(unit).font(.system(size: 14)).foregroundColor(.secondary) }
+                Text(value).font(.system(size: 24, weight: .heavy)).foregroundColor(GipetTheme.green)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                if let unit {
+                    Text(unit).font(.system(size: 12)).foregroundColor(GipetTheme.inkSoft)
+                        .lineLimit(1).fixedSize()
+                }
             }
-            if let sub { Text(sub).font(.system(size: 11)).foregroundColor(.secondary) }
+            if let sub {
+                Text(sub).font(.system(size: 10.5)).foregroundColor(GipetTheme.inkSoft)
+                    .lineLimit(1).minimumScaleFactor(0.75)
+            }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(GipetTheme.panelBg(16))
+    }
+}
+
+// MARK: - Watched repos (one-click commit)
+
+struct ReposSection: View {
+    @ObservedObject var model: GipetViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text("Repos").font(.system(size: 20, weight: .bold)).foregroundColor(GipetTheme.ink)
+                aiBadge
+                Spacer()
+                Button {
+                    if let path = pickFolder() { model.addRepo(path: path) }
+                } label: {
+                    Text("+ Add folder")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(GipetTheme.green)
+                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .overlay(Capsule().strokeBorder(GipetTheme.green.opacity(0.7), lineWidth: 1.5))
+                }
+                .buttonStyle(.plain)
+            }
+
+            if model.repos.isEmpty {
+                Text("Add a local git repo to get a one-click commit & push (with an AI-written message).")
+                    .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(model.repos) { repo in RepoRow(model: model, repo: repo) }
+                }
+            }
+        }
+    }
+
+    private var aiBadge: some View {
+        let on = model.aiAvailable
+        return Text(on ? "🧁 AI on" : "AI off")
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(on ? GipetTheme.green : GipetTheme.inkSoft)
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(Capsule().fill(on ? GipetTheme.greenSoft : GipetTheme.panel))
+    }
+
+    private func pickFolder() -> String? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Watch"
+        return panel.runModal() == .OK ? panel.url?.path : nil
+    }
+}
+
+struct RepoRow: View {
+    @ObservedObject var model: GipetViewModel
+    let repo: RepoState
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(repo.isDirty ? GipetTheme.orange : GipetTheme.green)
+                .frame(width: 11, height: 11)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(repo.name).font(.system(size: 15, weight: .bold)).foregroundColor(GipetTheme.ink)
+                Text(statusText).font(.system(size: 12)).foregroundColor(GipetTheme.inkSoft).lineLimit(1)
+            }
+            Spacer()
+            if repo.isBusy {
+                ProgressView().controlSize(.small)
+            } else {
+                Button("Journal") { model.journalCommit(repo: repo.path) }
+                    .buttonStyle(GhostPill())
+                    .help("AI가 gipet-journal.md에 한 줄 추가 후 커밋 (코드 안 건드림)")
+                Button("Commit") { model.commit(repo: repo.path) }
+                    .buttonStyle(SolidPill(enabled: repo.isDirty))
+                    .disabled(!repo.isDirty)
+                Button {
+                    model.removeRepo(repo.path)
+                } label: { Image(systemName: "xmark") }
+                    .buttonStyle(.plain).foregroundColor(GipetTheme.inkSoft)
+            }
+        }
+        .padding(14)
+        .background(GipetTheme.panelBg(14))
+    }
+
+    private var statusText: String {
+        if let r = repo.lastResult { return r }
+        return repo.isDirty ? "\(repo.dirtyCount) uncommitted change\(repo.dirtyCount == 1 ? "" : "s")" : "clean"
+    }
+}
+
+// MARK: - Button styles
+
+struct GhostPill: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(GipetTheme.inkSoft)
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .background(Capsule().fill(GipetTheme.cardBg))
+            .overlay(Capsule().strokeBorder(GipetTheme.panelBorder, lineWidth: 1))
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
+struct SolidPill: ButtonStyle {
+    var enabled: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .bold))
+            .foregroundColor(enabled ? .white : GipetTheme.inkSoft)
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .background(Capsule().fill(enabled ? GipetTheme.green : GipetTheme.panel))
+            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 
@@ -452,87 +567,9 @@ private func fmt(_ date: Date?, _ format: String) -> String {
     return df.string(from: date)
 }
 
-/// "MMM d → MMM d, yyyy"  (start without year, end with year).
+/// "MMM d → MMM d, yyyy"  (start without year, end with optional year).
 private func rangeText(_ start: Date?, _ end: Date?, endYear: Bool) -> String {
     let s = fmt(start, "MMM d")
     let e = fmt(end, endYear ? "MMM d, yyyy" : "MMM d")
     return "\(s) → \(e)"
-}
-
-// MARK: - Watched repos (one-click commit)
-
-struct ReposSection: View {
-    @ObservedObject var model: GipetViewModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Repos").font(.system(size: 18, weight: .bold))
-                if !model.aiAvailable {
-                    Text("(no AI key — generic message)")
-                        .font(.system(size: 10)).foregroundColor(.secondary)
-                }
-                Spacer()
-                Button {
-                    if let path = pickFolder() { model.addRepo(path: path) }
-                } label: { Label("Add folder", systemImage: "plus") }
-                    .font(.system(size: 12))
-            }
-
-            if model.repos.isEmpty {
-                Text("Add a local git repo to get a one-click commit & push (with an AI-written message).")
-                    .font(.system(size: 11)).foregroundColor(.secondary)
-            } else {
-                VStack(spacing: 6) {
-                    ForEach(model.repos) { repo in RepoRow(model: model, repo: repo) }
-                }
-            }
-        }
-    }
-
-    private func pickFolder() -> String? {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Watch"
-        return panel.runModal() == .OK ? panel.url?.path : nil
-    }
-}
-
-struct RepoRow: View {
-    @ObservedObject var model: GipetViewModel
-    let repo: RepoState
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: repo.isDirty ? "circle.fill" : "checkmark.circle.fill")
-                .foregroundColor(repo.isDirty ? .orange : GipetTheme.green)
-                .font(.system(size: 10))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(repo.name).font(.system(size: 13, weight: .medium))
-                Text(statusText).font(.system(size: 10)).foregroundColor(.secondary).lineLimit(1)
-            }
-            Spacer()
-            if repo.isBusy {
-                ProgressView().controlSize(.small)
-            } else {
-                Button("Journal") { model.journalCommit(repo: repo.path) }
-                    .help("AI가 gipet-journal.md에 한 줄 추가 후 커밋 (코드 안 건드림)")
-                Button("Commit") { model.commit(repo: repo.path) }
-                    .disabled(!repo.isDirty)
-                Button {
-                    model.removeRepo(repo.path)
-                } label: { Image(systemName: "xmark") }
-                    .buttonStyle(.plain).foregroundColor(.secondary)
-            }
-        }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 8).fill(GipetTheme.card))
-    }
-
-    private var statusText: String {
-        if let r = repo.lastResult { return r }
-        return repo.isDirty ? "\(repo.dirtyCount) uncommitted change\(repo.dirtyCount == 1 ? "" : "s")" : "clean"
-    }
 }

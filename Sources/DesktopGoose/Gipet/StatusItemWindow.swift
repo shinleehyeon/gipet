@@ -29,7 +29,7 @@ final class StatusItemWindow: NSPanel {
         // Rounded container that clips the SwiftUI content.
         let container = NSView()
         container.wantsLayer = true
-        container.layer?.cornerRadius = 12
+        container.layer?.cornerRadius = 22
         container.layer?.masksToBounds = true
         contentView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(contentView)
