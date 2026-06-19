@@ -42,15 +42,50 @@ final class GitHubDataProvider {
     /// commits can lag a few minutes (today may briefly read 0). Private commits
     /// never appear here at all — by design, since the public graph hides them.
     func fetchContributions(login: String) async throws -> [ContributionDay] {
-        try await fetchViaHTML(login: login, year: Self.currentYear)
+        var days = try await fetchViaHTML(login: login, year: Self.currentYear)
+
+        // The windowed (?from&to) view that gives us a clean calendar-year total
+        // lags the default profile view for the most recent day(s): a commit can
+        // already show on the profile while the windowed view still reads the old
+        // count. So overlay the fresher per-day counts from the default page
+        // (keyed by full yyyy-MM-dd, so 2025/2026 never collide), keeping the
+        // higher of the two.
+        if let fresh = try? await fetchDefaultHTML(login: login) {
+            var freshByDate: [String: ContributionDay] = [:]
+            for d in fresh { freshByDate[Self.dayKey(d.date)] = d }
+            days = days.map { d in
+                if let f = freshByDate[Self.dayKey(d.date)], f.count > d.count { return f }
+                return d
+            }
+        }
+        return days
     }
 
     private static var currentYear: Int {
         Calendar.current.component(.year, from: Date())
     }
 
+    private static let keyFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+    private static func dayKey(_ date: Date) -> String { keyFormatter.string(from: date) }
+
     private func fetchViaHTML(login: String, year: Int) async throws -> [ContributionDay] {
         let path = "https://github.com/users/\(login)/contributions?from=\(year)-01-01&to=\(year)-12-31"
+        return try await fetchHTML(path: path)
+    }
+
+    /// The default profile contributions page (no from/to) — fresher for today,
+    /// but spans a trailing ~year, so it's only used to overlay recent days.
+    private func fetchDefaultHTML(login: String) async throws -> [ContributionDay] {
+        try await fetchHTML(path: "https://github.com/users/\(login)/contributions")
+    }
+
+    private func fetchHTML(path: String) async throws -> [ContributionDay] {
         guard let url = URL(string: path) else { throw APIError.badURL }
         let html = try await api.text(url)
         let days = Self.parseContributions(html: html)
