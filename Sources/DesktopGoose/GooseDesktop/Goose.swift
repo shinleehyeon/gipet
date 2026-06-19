@@ -231,15 +231,12 @@ class Goose {
     var lastFrameMouseButtonPressed: Bool = false
 
     // Click-to-rest: when true the dog sits still and ignores wandering/tasks.
+    // Only the user can sit/wake the dog (by tapping it) — it never sits on its own.
     var isResting: Bool = false
 
-    // Autonomous sitting: every so often the dog sits down on its own for a few
-    // seconds and then stands back up. A *manual* rest (user tap) leaves
-    // isRestingAuto == false, so it never stands up on its own — only another tap
-    // wakes it.
-    var isRestingAuto: Bool = false
-    private var autoRestEndTime: Float = 0
-    private var nextAutoSitTime: Float = 0
+    // Every so often the dog drops a hint bubble ("나 누르면 앉아!") so the user
+    // knows it's tappable.
+    private var nextHintTime: Float = 0
 
     // Press-and-drag: hold the dog and move the cursor to carry it. A quick tap
     // (no drag) instead toggles resting.
@@ -359,6 +356,22 @@ class Goose {
         speechExpireTime = Time.time + duration
     }
 
+    // Occasionally hint that the dog is tappable (and only sits when tapped).
+    private func maybeSayTapHint() {
+        if nextHintTime == 0 {
+            nextHintTime = Time.time + SamMath.RandomRange(12, 25)
+            return
+        }
+        guard Time.time > nextHintTime else { return }
+        nextHintTime = Time.time + SamMath.RandomRange(25, 50)
+        if speechText != nil { return }   // don't talk over an existing bubble
+        let hints = isResting
+            ? ["또 누르면 일어나!", "한 번 더 누르면 일어남"]
+            : ["나 누르면 앉아!", "콕 누르면 앉음", "한 번 눌러봐, 앉을게"]
+        let i = min(Int(SamMath.RandomRange(0, Float(hints.count))), hints.count - 1)
+        Say(hints[i], duration: 4)
+    }
+
     func Tick() {
         let prevPosition = position
         SetCursorClip(.zero)
@@ -380,7 +393,6 @@ class Goose {
             if !isGrabbed && Vector2.Distance(cursor, grabStartCursor) > 6 {
                 isGrabbed = true
                 isResting = false
-                isRestingAuto = false
             }
             if isGrabbed {
                 position = cursor + grabOffset
@@ -394,10 +406,8 @@ class Goose {
                 targetPos = position
                 SetTask(.Wander, honck: false)
             } else if mouseDownOnDog {
-                // A tap → toggle sit/stop. A manual sit never stands up on its
-                // own; only another tap wakes it.
+                // A tap → toggle sit/stop.
                 isResting.toggle()
-                isRestingAuto = false
                 velocity = .zero
                 if isResting { targetPos = position } else { SetTask(.Wander, honck: false) }
             }
@@ -411,37 +421,18 @@ class Goose {
             SolveFeet()
             return
         }
-        // While resting, freeze in place: no AI, no movement — just keep the rig
-        // solved so the sitting pose renders cleanly. An autonomous sit stands
-        // back up once its timer elapses; a manual sit waits for another tap.
-        if isResting {
-            if isRestingAuto && Time.time > autoRestEndTime {
-                isResting = false
-                isRestingAuto = false
-                SetTask(.Wander, honck: false)
-            } else {
-                velocity = .zero
-                targetPos = position
-                SolveFeet()
-                return
-            }
-        }
+        // Drop an occasional "tap me" hint bubble so the user discovers that the
+        // dog is clickable (and only sits when clicked).
+        maybeSayTapHint()
 
-        // Every so often, sit down on our own for a few seconds (only while
-        // calmly wandering — don't interrupt a meme fetch or a mouse nab).
-        if nextAutoSitTime == 0 {
-            nextAutoSitTime = Time.time + SamMath.RandomRange(15, 35)
-        } else if currentTask == .Wander && Time.time > nextAutoSitTime {
-            isResting = true
-            isRestingAuto = true
+        // While resting, freeze in place: no AI, no movement — just keep the rig
+        // solved so the sitting pose renders cleanly. Only a user tap wakes it.
+        if isResting {
             velocity = .zero
             targetPos = position
-            autoRestEndTime = Time.time + SamMath.RandomRange(3, 8)
-            nextAutoSitTime = Time.time + SamMath.RandomRange(25, 55)
             SolveFeet()
             return
         }
-
         targetDirection = Vector2.Normalize(targetPos - position)
         overrideExtendNeck = false
         RunAI()
