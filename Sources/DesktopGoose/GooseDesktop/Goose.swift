@@ -234,10 +234,6 @@ class Goose {
     // Only the user can sit/wake the dog (by tapping it) — it never sits on its own.
     var isResting: Bool = false
 
-    // Every so often the dog drops a hint bubble ("나 누르면 앉아!") so the user
-    // knows it's tappable.
-    private var nextHintTime: Float = 0
-
     // Press-and-drag: hold the dog and move the cursor to carry it. A quick tap
     // (no drag) instead toggles resting.
     var isGrabbed: Bool = false
@@ -356,22 +352,6 @@ class Goose {
         speechExpireTime = Time.time + duration
     }
 
-    // Occasionally hint that the dog is tappable (and only sits when tapped).
-    private func maybeSayTapHint() {
-        if nextHintTime == 0 {
-            nextHintTime = Time.time + SamMath.RandomRange(12, 25)
-            return
-        }
-        guard Time.time > nextHintTime else { return }
-        nextHintTime = Time.time + SamMath.RandomRange(25, 50)
-        if speechText != nil { return }   // don't talk over an existing bubble
-        let hints = isResting
-            ? ["또 누르면 일어나!", "한 번 더 누르면 일어남"]
-            : ["나 누르면 앉아!", "콕 누르면 앉음", "한 번 눌러봐, 앉을게"]
-        let i = min(Int(SamMath.RandomRange(0, Float(hints.count))), hints.count - 1)
-        Say(hints[i], duration: 4)
-    }
-
     func Tick() {
         let prevPosition = position
         SetCursorClip(.zero)
@@ -421,10 +401,6 @@ class Goose {
             SolveFeet()
             return
         }
-        // Drop an occasional "tap me" hint bubble so the user discovers that the
-        // dog is clickable (and only sits when clicked).
-        maybeSayTapHint()
-
         // While resting, freeze in place: no AI, no movement — just keep the rig
         // solved so the sitting pose renders cleanly. Only a user tap wakes it.
         if isResting {
