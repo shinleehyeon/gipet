@@ -5,3 +5,6 @@ Gipet.app/
 Package.resolved
 *.xcodeproj
 *.xcworkspace
+build/
+# GipetSecrets.swift is committed with real credentials.
+# Forks: cp GipetSecrets.swift.template GipetSecrets.swift and fill in your own.

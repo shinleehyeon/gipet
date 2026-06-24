@@ -17,30 +17,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // Last dad joke shown, so the celebration doesn't repeat back-to-back.
     private var lastJoke: String?
 
-    // The goose reads memes/notes directly from these project folders.
-    // Drop a PNG into MemesDirectory and the next time the goose runs a
-    // CollectWindow_Meme task it will pick from the new file list.
-    // Resolve relative to the repo so forks/clones use their own checkout
-    // instead of a hardcoded /Users/<me> path. #filePath points at
-    // <repo>/desktop-dog/Sources/DesktopGoose/MacGoose/AppDelegate.swift,
-    // so four parent hops land on <repo>/desktop-dog.
-    static let ProjectRootDir: String = {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // MacGoose
-            .deletingLastPathComponent()   // DesktopGoose
-            .deletingLastPathComponent()   // Sources
-            .deletingLastPathComponent()   // desktop-dog
-            .path
-    }()
-    static let ProjectMemesDir = (ProjectRootDir as NSString).appendingPathComponent("Memes")
-    static let ProjectNotesDir = (ProjectRootDir as NSString).appendingPathComponent("Notes")
+    // Memes and Notes live in Application Support so users can add their own.
+    // On first launch, built-in defaults are seeded from the app bundle.
+    private static func gipetSupportDir(_ sub: String) -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = base.appendingPathComponent("Gipet/\(sub)")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
 
-    var MemesDirectory: URL {
-        URL(fileURLWithPath: AppDelegate.ProjectMemesDir, isDirectory: true)
-    }
-    var NotesDirectory: URL {
-        URL(fileURLWithPath: AppDelegate.ProjectNotesDir, isDirectory: true)
-    }
+    var MemesDirectory: URL { AppDelegate.gipetSupportDir("Memes") }
+    var NotesDirectory: URL { AppDelegate.gipetSupportDir("Notes") }
     static var HomeDirectory: String { NSHomeDirectory() }
 
     // Character toggle (goose/dachshund).
@@ -64,14 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         GooseConfig.settings = MacGooseSettings()
-        // No copy step — the goose reads straight from the project Memes/ and Notes/ dirs.
-        // This is the ONE place to edit images: AppDelegate.ProjectMemesDir.
-        try? FileManager.default.createDirectory(atPath: AppDelegate.ProjectMemesDir,
-                                                 withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(atPath: AppDelegate.ProjectNotesDir,
-                                                 withIntermediateDirectories: true)
-        Goose = MacintoshGoose(memesDirectory: AppDelegate.ProjectMemesDir,
-                               notesDirectory: AppDelegate.ProjectNotesDir)
+        seedBundleResources()
+        Goose = MacintoshGoose(memesDirectory: MemesDirectory.path,
+                               notesDirectory: NotesDirectory.path)
         NSApplication.shared.activate(ignoringOtherApps: true)
         installStatusItem()
         installGipet()
@@ -132,11 +114,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func openMemesFolder(_ sender: Any?) {
-        NSWorkspace.shared.open(AppDelegate.SharedAppDelegate.MemesDirectory)
+        NSWorkspace.shared.open(MemesDirectory)
     }
 
     @objc func openNotesFolder(_ sender: Any?) {
-        NSWorkspace.shared.open(AppDelegate.SharedAppDelegate.NotesDirectory)
+        NSWorkspace.shared.open(NotesDirectory)
+    }
+
+    // Copy bundled Memes/ and Notes/ into Application Support on first launch.
+    // Existing user files are never overwritten.
+    private func seedBundleResources() {
+        seed(bundleSubdir: "Memes", into: MemesDirectory)
+        seed(bundleSubdir: "Notes", into: NotesDirectory)
+    }
+
+    private func seed(bundleSubdir: String, into dest: URL) {
+        guard let bundleDir = Bundle.main.url(forResource: bundleSubdir, withExtension: nil) else { return }
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(at: bundleDir, includingPropertiesForKeys: nil) else { return }
+        for src in items {
+            let target = dest.appendingPathComponent(src.lastPathComponent)
+            if !fm.fileExists(atPath: target.path) {
+                try? fm.copyItem(at: src, to: target)
+            }
+        }
     }
 
     func ShowPreferences() {

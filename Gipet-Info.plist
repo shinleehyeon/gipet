@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Gipet</string>
+    <key>CFBundleDisplayName</key>
+    <string>Gipet</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <!-- Menu-bar only: no Dock icon -->
+    <key>LSUIElement</key>
+    <true/>
+    <!-- gipet:// custom URL scheme for GitHub OAuth callback -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.gipet.app</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>gipet</string>
+            </array>
+        </dict>
+    </array>
+    <!-- Privacy usage descriptions (required by App Review) -->
+    <key>NSNetworkVolumesUsageDescription</key>
+    <string>Gipet connects to GitHub to display your contribution streak.</string>
+    <!-- App icon -->
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <!-- Human-readable copyright -->
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 Gipet. All rights reserved.</string>
+    <!-- Hardened Runtime required for Notarization -->
+    <key>com.apple.security.hardened-runtime</key>
+    <true/>
+</dict>
+</plist>

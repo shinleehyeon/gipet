@@ -10,7 +10,11 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "DesktopGoose",
-            path: "Sources/DesktopGoose"
+            path: "Sources/DesktopGoose",
+            resources: [
+                .copy("Resources/Memes"),
+                .copy("Resources/Notes"),
+            ]
         ),
     ]
 )

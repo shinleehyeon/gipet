@@ -78,6 +78,7 @@ class Goose {
         var grabbedOriginalTime: Float = 0
         var chaseStartTime: Float = 0
         var originalVectorToMouse: Vector2 = .zero
+        var hasSaidFrustrated: Bool = false
 
         static let MouseGrabDistance: Float = 15
         static let MouseSuccTime: Float = 0.06
@@ -503,6 +504,10 @@ class Goose {
                 BringWindowToForeground()
                 PlaySound(.CHOMP)
                 taskNabMouseInfo.currentStage = .DraggingMouseAway
+            }
+            if !taskNabMouseInfo.hasSaidFrustrated && Time.time > taskNabMouseInfo.chaseStartTime + 2 {
+                taskNabMouseInfo.hasSaidFrustrated = true
+                Say("아오 좀 멈춰봐")
             }
             if Time.time > taskNabMouseInfo.chaseStartTime + 9 {
                 taskNabMouseInfo.currentStage = .Decelerating

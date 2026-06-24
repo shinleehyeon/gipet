@@ -1,0 +1,58 @@
+name: Gipet
+options:
+  bundleIdPrefix: com.gipet
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+
+targets:
+  Gipet:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+
+    sources:
+      - path: Sources/DesktopGoose
+        excludes:
+          - "**/.DS_Store"
+          - Resources/**   # resources added separately below
+
+    resources:
+      - path: Sources/DesktopGoose/Resources/Memes
+        buildPhase: resources
+      - path: Sources/DesktopGoose/Resources/Notes
+        buildPhase: resources
+      - path: Resources/AppIcon/AppIcon.icns
+        buildPhase: resources
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gipet.app
+        PRODUCT_NAME: Gipet
+        INFOPLIST_FILE: Gipet-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Gipet.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_VERSION: "5.9"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        # Carbon for RegisterEventHotKey
+        OTHER_LDFLAGS: "-framework Carbon"
+        # MAS code signing
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Distribution"
+        DEVELOPMENT_TEAM: "WN99FPJ6HV"
+        PROVISIONING_PROFILE_SPECIFIER: "Gipet Mac App Store"   # ← Apple Developer에서 생성 후 이름 확인
+
+    preBuildScripts:
+      - name: Check Secrets
+        script: |
+          if [ -z "${GIPET_GITHUB_CLIENT_SECRET}" ]; then
+            echo "warning: GIPET_GITHUB_CLIENT_SECRET not set — OAuth will not work"
+          fi

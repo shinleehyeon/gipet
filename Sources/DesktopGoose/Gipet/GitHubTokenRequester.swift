@@ -17,9 +17,8 @@ import Foundation
 import AppKit
 
 enum GipetGitHub {
-    // Registered OAuth app credentials (github.com/settings/developers).
-    static let clientID     = "Ov23lianGqavYyWfNqjD"
-    static let clientSecret = "2463d7139055509450cbd8d43e1e99c779bf4749"
+    static let clientID     = GipetSecrets.githubClientID
+    static let clientSecret = GipetSecrets.githubClientSecret
     static let scope        = "read:user"
     static let callbackScheme = "gipet"
     static let redirectURI  = "gipet://callback"
@@ -29,37 +28,35 @@ enum GipetGitHub {
     }
 }
 
-/// Persists the GitHub access token + cached login. (UserDefaults for
-/// simplicity; move to Keychain for production secrecy.)
+/// Persists the GitHub access token + cached login in the Keychain (token)
+/// and UserDefaults (non-sensitive username/login cache).
 final class TokenStore {
     static let shared = TokenStore()
-    private let tokenKey = "Gipet.githubToken"
+    private let tokenKey = "githubToken"
     private let loginKey = "Gipet.githubLogin"
     private let userKey  = "Gipet.githubUsername"
-    private let d = UserDefaults.standard
 
-    /// OAuth / Personal Access Token. Optional — only needed for username
-    /// auto-detect (api.github.com/user) and private contributions.
+    /// OAuth / Personal Access Token — stored in Keychain.
     var token: String? {
-        get { d.string(forKey: tokenKey) }
+        get { KeychainHelper.load(for: tokenKey) }
         set {
-            d.set(newValue, forKey: tokenKey)
+            if let v = newValue { KeychainHelper.save(v, for: tokenKey) }
+            else { KeychainHelper.delete(for: tokenKey) }
             APIClient.shared.accessToken = newValue
         }
     }
     /// Manually entered username — lets us load public contributions with no token.
     var username: String? {
-        get { d.string(forKey: userKey) }
-        set { d.set(newValue?.trimmingCharacters(in: .whitespacesAndNewlines), forKey: userKey) }
+        get { UserDefaults.standard.string(forKey: userKey) }
+        set { UserDefaults.standard.set(newValue?.trimmingCharacters(in: .whitespacesAndNewlines), forKey: userKey) }
     }
     var cachedLogin: String? {
-        get { d.string(forKey: loginKey) }
-        set { d.set(newValue, forKey: loginKey) }
+        get { UserDefaults.standard.string(forKey: loginKey) }
+        set { UserDefaults.standard.set(newValue, forKey: loginKey) }
     }
 
     var hasToken: Bool { token?.isEmpty == false }
     var hasUsername: Bool { username?.isEmpty == false }
-    /// "Signed in" = we have *some* way to load contributions.
     var isSignedIn: Bool { hasToken || hasUsername }
 
     func signOut() {
@@ -69,8 +66,17 @@ final class TokenStore {
     }
 
     private init() {
-        // Re-arm the API client with any token saved from a previous session.
+        migrateFromUserDefaults()
         APIClient.shared.accessToken = token
+    }
+
+    // One-time migration: move any token stored in UserDefaults (old builds) to Keychain.
+    private func migrateFromUserDefaults() {
+        let legacyKey = "Gipet.githubToken"
+        if let legacy = UserDefaults.standard.string(forKey: legacyKey), !legacy.isEmpty {
+            KeychainHelper.save(legacy, for: tokenKey)
+            UserDefaults.standard.removeObject(forKey: legacyKey)
+        }
     }
 }
 

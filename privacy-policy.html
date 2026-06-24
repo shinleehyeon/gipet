@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gipet — Privacy Policy</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 700px; margin: 60px auto; padding: 0 20px; line-height: 1.7; color: #1a1a1a; }
+  h1 { color: #2ea44f; }
+  h2 { margin-top: 2em; }
+  a  { color: #2ea44f; }
+</style>
+</head>
+<body>
+<h1>Gipet — Privacy Policy</h1>
+<p><em>Last updated: June 24, 2026</em></p>
+
+<h2>1. Overview</h2>
+<p>Gipet is a macOS menu-bar app that displays a desktop pet character and shows your GitHub contribution streak. We take your privacy seriously. This policy describes what data Gipet accesses and how it is handled.</p>
+
+<h2>2. Data We Collect</h2>
+<h3>GitHub Account Data</h3>
+<p>If you sign in with GitHub, Gipet requests the <code>read:user</code> scope to identify your username and read your public contribution graph. Your GitHub access token is stored securely in the macOS Keychain on your device and is never transmitted to any server other than GitHub's official API (<code>api.github.com</code>).</p>
+
+<h3>Contribution Data</h3>
+<p>Gipet fetches contribution data (commit counts, streak information) directly from GitHub's API. This data is cached locally in memory only and is not stored on disk beyond what GitHub itself provides.</p>
+
+<h3>AI Features</h3>
+<p>Gipet may use an AI API (OpenRouter / OpenAI) to generate speech-bubble messages. If you provide an API key, it is stored only in your local environment and is sent only to the respective AI provider's servers. No personal data is included in AI requests.</p>
+
+<h2>3. Data We Do NOT Collect</h2>
+<ul>
+  <li>We do not collect any analytics or usage data.</li>
+  <li>We do not share your information with third parties.</li>
+  <li>We do not store any data on remote servers operated by Gipet.</li>
+</ul>
+
+<h2>4. Data Storage</h2>
+<ul>
+  <li><strong>GitHub token:</strong> Stored in the macOS Keychain (encrypted, device-local).</li>
+  <li><strong>GitHub username / preferences:</strong> Stored in <code>UserDefaults</code> (device-local).</li>
+  <li><strong>Memes and Notes:</strong> Stored in <code>~/Library/Application Support/Gipet/</code> (device-local).</li>
+</ul>
+
+<h2>5. Network Requests</h2>
+<p>Gipet makes network requests only to:</p>
+<ul>
+  <li><code>api.github.com</code> — contribution data and user info</li>
+  <li><code>github.com</code> — OAuth login flow</li>
+  <li><code>openrouter.ai</code> or <code>api.openai.com</code> — AI-generated messages (only if an API key is configured)</li>
+</ul>
+
+<h2>6. Children's Privacy</h2>
+<p>Gipet is not directed at children under 13 and we do not knowingly collect data from children.</p>
+
+<h2>7. Changes to This Policy</h2>
+<p>We may update this policy occasionally. Continued use of Gipet after changes constitutes acceptance of the revised policy.</p>
+
+<h2>8. Contact</h2>
+<p>Questions? Contact us at: <a href="mailto:sgolilla1@naver.com">sgolilla1@naver.com</a></p>
+</body>
+</html>
