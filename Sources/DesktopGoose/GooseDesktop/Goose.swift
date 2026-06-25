@@ -34,6 +34,7 @@ class Goose {
         case CollectWindow_DONOTSET
         case TrackMud
         case HeartTrail
+        case BringFriends
         case Count
     }
 
@@ -149,6 +150,19 @@ class Goose {
         var startPoint: Vector2 = .zero
     }
 
+    struct Task_BringFriends {
+        enum Stage {
+            case WalkingOffscreen
+            case WalkingBack
+            case Chatting
+        }
+        var stage: Stage = .WalkingOffscreen
+        var screenDirection: Task_CollectWindow.ScreenDirection = .Left
+        var friendsFired: Bool = false
+        var chatStartTime: Float = 0
+        var chatFired: Bool = false
+    }
+
     struct Rig {
         static let UnderBodyRadius: Int = 15
         static let UnderBodyLength: Int = 7
@@ -247,6 +261,7 @@ class Goose {
     private var speechExpireTime: Float = 0
 
     private var currentTask: GooseTask = .Wander
+    private var pendingTask: GooseTask? = nil
     private var taskWanderInfo = Task_Wander()
     private var taskNabMouseInfo = Task_NabMouse()
     private var tmpRect: CGRect = .zero
@@ -255,6 +270,10 @@ class Goose {
     private var taskTrackMudInfo = Task_TrackMud()
     private var taskHeartTrailInfo = Task_HeartTrail()
     private var nextAllowedNabMouseTime: Float = 0
+    private var taskBringFriendsInfo = Task_BringFriends()
+    private var nextAllowedBringFriendsTime: Float = 30
+    var onBringFriendsReturning: (() -> Void)? = nil
+    var onBringFriendsArrived: (() -> Void)? = nil
 
     // Heavily meme-biased — user wanted the goose to bring memes much more often.
     // CanAttackAtRandom defaults to false, so the NabMouse slots are skipped by
@@ -572,7 +591,7 @@ class Goose {
     private func RunCollectWindow() {
         switch taskCollectWindowInfo.stage {
         case .WalkingOffscreen:
-            if Vector2.Distance(position, targetPos) < 5 {
+            if Vector2.Distance(position, targetPos) < 20 {
                 taskCollectWindowInfo.secsToWait = Task_CollectWindow.GetWaitTime()
                 taskCollectWindowInfo.waitStartTime = Time.time
                 taskCollectWindowInfo.stage = .WaitingToBringWindowBack
@@ -677,6 +696,52 @@ class Goose {
                                xScale: taskHeartTrailInfo.xScale, yScale: taskHeartTrailInfo.yScale)
     }
 
+    private func RunBringFriends() {
+        switch taskBringFriendsInfo.stage {
+        case .WalkingOffscreen:
+            if Vector2.Distance(position, targetPos) < 20 {
+                let w = GetMainWindowWidth()
+                let h = GetMainWindowHeight()
+                let edgeInset: Float = 200
+                switch taskBringFriendsInfo.screenDirection {
+                case .Left:
+                    targetPos = Vector2(edgeInset, SamMath.Clamp(position.y, 100, h - 100))
+                case .Right:
+                    targetPos = Vector2(w - edgeInset, SamMath.Clamp(position.y, 100, h - 100))
+                case .Top:
+                    targetPos = Vector2(SamMath.Clamp(position.x, 100, w - 100), edgeInset)
+                }
+                taskBringFriendsInfo.stage = .WalkingBack
+                SetSpeed(.Run)
+                currentSpeed = 130
+                if !taskBringFriendsInfo.friendsFired {
+                    taskBringFriendsInfo.friendsFired = true
+                    onBringFriendsReturning?()
+                }
+            }
+        case .WalkingBack:
+            if Vector2.Distance(position, targetPos) < 20 {
+                velocity = .zero
+                targetPos = position
+                taskBringFriendsInfo.stage = .Chatting
+                taskBringFriendsInfo.chatStartTime = Time.time
+            }
+        case .Chatting:
+            // Face downward and freeze while talking.
+            targetPos = position
+            velocity = .zero
+            targetDirection = Vector2(0, 1)
+            if !taskBringFriendsInfo.chatFired {
+                taskBringFriendsInfo.chatFired = true
+                Say("얘임 커밋\n하나도 안한애가", duration: 4.0)
+                onBringFriendsArrived?()
+            }
+            if Time.time - taskBringFriendsInfo.chatStartTime > 13 {
+                SetTask(.Wander, honck: false)
+            }
+        }
+    }
+
     private func ChooseNextTask() {
         if !GooseConfig.settings.CanAttackAtRandom && Time.time < GooseConfig.settings.FirstWanderTimeSeconds + 1 {
             // Keep startup in normal random wander; avoid forced offscreen run.
@@ -692,6 +757,14 @@ class Goose {
             }
             // Even when not triggered, push next check out a bit to avoid repeated rolls.
             nextAllowedNabMouseTime = Time.time + 10
+        }
+        if Time.time >= nextAllowedBringFriendsTime {
+            if SamMath.RandomRange(0, 1) < 0.12 {
+                nextAllowedBringFriendsTime = Time.time + SamMath.RandomRange(90, 150)
+                SetTask(.BringFriends, honck: false)
+                return
+            }
+            nextAllowedBringFriendsTime = Time.time + 15
         }
         // Prevent hangs: if all weighted tasks are filtered out, fallback to Wander.
         for _ in 0..<(gooseTaskWeightedList.count * 3) {
@@ -716,6 +789,17 @@ class Goose {
         return Goose.possiblePhrases[Goose.textIndices.Next()]
     }
 
+    // External callers use requestTask — it queues the task if the dog
+    // is currently mid-action and applies it when Wander is re-entered.
+    func requestTask(_ task: GooseTask) {
+        guard currentTask != .BringFriends else { return }
+        guard currentTask == .Wander else {
+            pendingTask = task
+            return
+        }
+        SetTask(task, honck: false)
+    }
+
     func SetTask(_ task: GooseTask, honck: Bool = true) {
         if honck {
             PlaySound(.HONCC)
@@ -729,6 +813,11 @@ class Goose {
             taskWanderInfo.wanderingStartTime = Time.time
             taskWanderInfo.wanderingDuration = ScheduledWanderTime ?? Task_Wander.GetRandomWanderDuration()
             ScheduledWanderTime = nil
+            if let next = pendingTask {
+                pendingTask = nil
+                SetTask(next, honck: false)
+                return
+            }
         case .NabMouse:
             taskNabMouseInfo = Task_NabMouse()
             taskNabMouseInfo.chaseStartTime = Time.time
@@ -754,6 +843,15 @@ class Goose {
                 case .Right:
                     taskCollectWindowInfo.windowOffsetToBeak = Vector2(0, Float(form.Height / 2))
                 }
+            }
+        case .BringFriends:
+            taskBringFriendsInfo = Task_BringFriends()
+            taskBringFriendsInfo.screenDirection = SetTargetOffscreen()
+            // Push exit target far enough that the dog is fully invisible (view is 200px wide).
+            switch taskBringFriendsInfo.screenDirection {
+            case .Left:  targetPos.x -= 150
+            case .Right: targetPos.x += 150
+            case .Top:   targetPos.y -= 150
             }
         case .TrackMud:
             // Disable TrackMud so offscreen travel happens only for image/note collect.
@@ -787,6 +885,7 @@ class Goose {
         case .CollectWindow_DONOTSET:  RunCollectWindow()
         case .TrackMud:                RunTrackMud()
         case .HeartTrail:              RunHeartTrail()
+        case .BringFriends:            RunBringFriends()
         case .CollectWindow_Meme, .CollectWindow_Notepad, .CollectWindow_Donate,
              .Count:
             break

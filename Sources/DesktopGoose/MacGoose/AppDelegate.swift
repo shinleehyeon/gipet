@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         applyCharacterChoice()
         installGlobalHotkey()
         installRightClickMove()
+        installFriendDogHook()
     }
 
     private func installGipet() {
@@ -69,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // image (Memes/) or a note (Notes/).
         gipet.onNoCommitNudge = { [weak self] in
             let task: Goose.GooseTask = Bool.random() ? .CollectWindow_Meme : .CollectWindow_Notepad
-            self?.Goose?.SetTask(task, honck: false)
+            self?.Goose?.requestTask(task)
         }
         // Commit reminder bubble — fires once a minute while you haven't committed.
         gipet.onNoCommitSay = { [weak self] in
@@ -81,8 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.lastJoke = joke
             self?.Goose?.Say(joke, duration: 6)
         }
-        // Committed today → the dog tells a random dad joke (no immediate repeat).
+        // Committed today → dog does a heart trail then tells a dad joke (once per day).
         gipet.onDidCommit = { [weak self] in
+            self?.Goose?.requestTask(.HeartTrail)
             let joke = DadJokes.random(avoiding: self?.lastJoke)
             self?.lastJoke = joke
             self?.Goose?.Say(joke, duration: 6)
@@ -121,10 +123,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.popupGooseMenuAtCursor()
         }
         HotkeyManager.shared.register(keyCode: 46, modifiers: cmdCtrl) { [weak self] in
-            self?.Goose?.SetTask(.CollectWindow_Meme, honck: false)
+            self?.Goose?.requestTask(.CollectWindow_Meme)
         }
         HotkeyManager.shared.register(keyCode: 11, modifiers: cmdCtrl) { [weak self] in
-            self?.Goose?.SetTask(.CollectWindow_Notepad, honck: false)
+            self?.Goose?.requestTask(.CollectWindow_Notepad)
         }
     }
 
@@ -208,6 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         menu.addItem(withTitle: "Heart Trail", action: #selector(menuHeartTrail), keyEquivalent: "")
             .target = self
         menu.addItem(withTitle: "Track Mud",  action: #selector(menuTrackMud),   keyEquivalent: "m").target = self
+        menu.addItem(withTitle: "친구 데려오기",  action: #selector(menuBringFriends), keyEquivalent: "f").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Open Memes", action: #selector(openMemesFolder(_:)), keyEquivalent: "")
             .target = self
@@ -392,9 +395,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Goose?.Say(joke, duration: 6)
     }
     @objc private func menuHonk()       { Goose?.PlaySound(.HONCC) }
-    @objc private func menuNabMouse()   { Goose?.SetTask(.NabMouse, honck: false) }
+    @objc private func menuNabMouse()   { Goose?.requestTask(.NabMouse) }
     @objc private func menuWander()     { Goose?.SetTask(.Wander,   honck: false) }
-    @objc private func menuHeartTrail() { Goose?.SetTask(.HeartTrail, honck: false) }
-    @objc private func menuTrackMud()   { Goose?.SetTask(.TrackMud, honck: false) }
+    @objc private func menuHeartTrail() { Goose?.requestTask(.HeartTrail) }
+    @objc private func menuTrackMud()   { Goose?.requestTask(.TrackMud) }
+    @objc private func menuBringFriends() { Goose?.requestTask(.BringFriends) }
     @objc private func menuQuit()       { NSApp.terminate(nil) }
+
+    private func installFriendDogHook() {
+        Goose?.onBringFriendsReturning = { [weak self] in
+            guard let dog = self?.Goose else { return }
+            FriendDogManager.shared.spawnFriends(
+                near: dog.position,
+                screenWidth: dog.GetMainWindowWidth(),
+                screenHeight: dog.GetMainWindowHeight()
+            )
+        }
+        Goose?.onBringFriendsArrived = {
+            FriendDogManager.shared.startDialogue()
+        }
+    }
 }

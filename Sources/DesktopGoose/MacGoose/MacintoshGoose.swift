@@ -81,6 +81,7 @@ final class MacintoshGoose: Goose {
             guard let self else { return }
             Time.TickTime()
             self.Tick()
+            FriendDogManager.shared.tickAll()
             self.gooseView.frame = self.CalculateGooseViewFrame()
             if self.hasFootmarks || self.clickIndicatorScreenPos != nil {
                 self.Window.contentView?.setNeedsDisplay(self.Window.contentView?.frame ?? .zero)
@@ -99,10 +100,6 @@ final class MacintoshGoose: Goose {
         switch kind {
         case .chick:
             let v = ChickCharacterView()
-            v.goose = self
-            view = v
-        case .pig:
-            let v = PigCharacterView()
             v.goose = self
             view = v
         }
@@ -124,6 +121,17 @@ final class MacintoshGoose: Goose {
         tickTimer?.invalidate()
         tickTimer = nil
         Window.orderOut(nil)
+    }
+
+    func makeExternallyManaged() {
+        tickTimer?.invalidate()
+        tickTimer = nil
+    }
+
+    func tickAndRedraw() {
+        Tick()
+        gooseView.frame = CalculateGooseViewFrame()
+        gooseView.setNeedsDisplay(gooseView.bounds)
     }
 
     private func CalculateGooseViewFrame() -> CGRect {
