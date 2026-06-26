@@ -188,7 +188,6 @@ final class MacintoshGoose: Goose {
         g.translateBy(x: CGFloat(100 - position.x),
                       y: CGFloat(100 - position.y) - gooseView.frame.height)
         UpdateRig()
-        let vector = Vector2(position.x, position.y)
         let vector2 = Vector2(1.3, 0.4)
         let fromAngleDegrees = Vector2.GetFromAngleDegrees(direction)
         let fromAngleDegrees2 = Vector2.GetFromAngleDegrees(direction + 90)
@@ -198,7 +197,6 @@ final class MacintoshGoose: Goose {
         g.setLineCap(.round)
         FillCircleFromCenter(g, settings.GooseOrange, lFootPos, 4)
         FillCircleFromCenter(g, settings.GooseOrange, rFootPos, 4)
-        FillEllipseFromCenter(g, shadowPattern, Int(vector.x), Int(vector.y), 20, 15)
         g.setStrokeColor(settings.GooseOutline)
         DrawLine(g, 22 + num, ToIntPoint(gooseRig.bodyCenter + fromAngleDegrees * 11),
                               ToIntPoint(gooseRig.bodyCenter - fromAngleDegrees * 11))

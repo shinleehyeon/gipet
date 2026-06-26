@@ -389,7 +389,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // MARK: - Dev actions
     @objc private func devSpawnFriends() {
-        guard let g = Goose else { return }
+        guard Goose != nil else { return }
         let screen = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
         let w = Float(screen.width), h = Float(screen.height)
         FriendDogManager.shared.spawnFriends(near: Vector2(w / 2, h / 2), screenWidth: w, screenHeight: h)

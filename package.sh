@@ -85,7 +85,7 @@ if [ "${1:-}" = "--run" ]; then
     echo "▸ Restarting Gipet…"
     # If an existing Gipet process is alive, "open" only activates it and
     # code changes won't load. Kill first, then force a new app instance.
-    pkill -f "$APP/Contents/MacOS/$EXE_NAME" 2>/dev/null || true
-    sleep 0.3
+    pkill -9 -f "$APP/Contents/MacOS/$EXE_NAME" 2>/dev/null || true
+    sleep 1.0
     open "$APP"
 fi
