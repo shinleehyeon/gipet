@@ -186,18 +186,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             menu.addItem(mi)
         }
         menu.addItem(.separator())
-        menu.addItem(withTitle: "말풍선 💬",   action: #selector(menuSpeak),      keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Nab Mouse",  action: #selector(menuNabMouse),   keyEquivalent: "n").target = self
-        menu.addItem(withTitle: "Heart Trail", action: #selector(menuHeartTrail), keyEquivalent: "")
-            .target = self
-        menu.addItem(withTitle: "친구 데려오기",  action: #selector(menuBringFriends), keyEquivalent: "f").target = self
-        menu.addItem(.separator())
 
         // Developer submenu — only visible when devMode flag is set:
         //   defaults write com.gipet.app GitDog.devMode -bool true
         if UserDefaults.standard.bool(forKey: "GitDog.devMode") {
             let devMenu = NSMenu()
             devMenu.addItem(withTitle: "친구 즉시 소환",    action: #selector(devSpawnFriends),    keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "말풍선 💬",        action: #selector(menuSpeak),          keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "Nab Mouse",       action: #selector(menuNabMouse),       keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "Heart Trail",     action: #selector(menuHeartTrail),     keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "친구 데려오기",     action: #selector(menuBringFriends),   keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "밈 물어오기",       action: #selector(devTriggerMeme),     keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "메모 물어오기",     action: #selector(devTriggerNote),     keyEquivalent: "").target = self
+            devMenu.addItem(.separator())
             devMenu.addItem(withTitle: "하루 상태 초기화",  action: #selector(devResetDaily),      keyEquivalent: "").target = self
             devMenu.addItem(withTitle: "기여 새로고침",     action: #selector(devForceRefresh),    keyEquivalent: "").target = self
             devMenu.addItem(withTitle: "강아지 상태 출력",  action: #selector(devPrintGooseState), keyEquivalent: "").target = self
@@ -399,6 +400,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSLog("[DEV] Friends spawned directly")
     }
 
+    @objc private func devTriggerMeme()    { Goose?.SetTask(.CollectWindow_Meme,    honck: false) }
+    @objc private func devTriggerNote()    { Goose?.SetTask(.CollectWindow_Notepad, honck: false) }
     @objc private func devResetDaily()     { gipet.devResetDailyState() }
     @objc private func devForceRefresh()   { gipet.devForceRefresh() }
 

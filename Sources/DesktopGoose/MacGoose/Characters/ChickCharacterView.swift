@@ -263,12 +263,22 @@ final class ChickCharacterView: NSView {
     }
 
     private func drawDogPaw(_ g: CGContext, anchor: Vector2, color: CGColor) {
-        // Keep footprint size close to previous paw, but shape it like a dog paw:
-        // one rounded base pad + four toe beans.
-        fillEllipse(g, color: color, center: anchor + Vector2(0, -0.55), xR: 2.6, yR: 1.55)  // base pad
-        fillEllipse(g, color: color, center: anchor + Vector2(-2.0, 1.2), xR: 0.72, yR: 0.92) // toe 1
-        fillEllipse(g, color: color, center: anchor + Vector2(-0.7, 1.8), xR: 0.72, yR: 0.96) // toe 2
-        fillEllipse(g, color: color, center: anchor + Vector2(0.7, 1.8), xR: 0.72, yR: 0.96)  // toe 3
-        fillEllipse(g, color: color, center: anchor + Vector2(2.0, 1.2), xR: 0.72, yR: 0.92)  // toe 4
+        g.setFillColor(color)
+        let cx = CGFloat(anchor.x)
+        let cy = CGFloat(anchor.y)
+        let s: CGFloat = 5.0
+        let r: CGFloat = 1.8
+        // Rounded triangle: wide at top, pointed at bottom
+        let tL  = CGPoint(x: cx - s,       y: cy - s * 0.3)
+        let tR  = CGPoint(x: cx + s,       y: cy - s * 0.3)
+        let bot = CGPoint(x: cx,           y: cy + s * 0.9)
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: (tL.x + tR.x) / 2, y: tL.y))
+        path.addArc(tangent1End: tR,  tangent2End: bot, radius: r)
+        path.addArc(tangent1End: bot, tangent2End: tL,  radius: r)
+        path.addArc(tangent1End: tL,  tangent2End: tR,  radius: r)
+        path.closeSubpath()
+        g.addPath(path)
+        g.fillPath()
     }
 }

@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Gipet</string>
+    <string>깃독</string>
     <key>CFBundleDisplayName</key>
-    <string>Gipet</string>
+    <string>깃독</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -35,7 +35,7 @@
     </array>
     <!-- Privacy usage descriptions (required by App Review) -->
     <key>NSNetworkVolumesUsageDescription</key>
-    <string>Gipet connects to GitHub to display your contribution streak.</string>
+    <string>깃독 connects to GitHub to display your contribution streak.</string>
     <!-- App Store category -->
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.productivity</string>
@@ -44,7 +44,7 @@
     <string>AppIcon</string>
     <!-- Human-readable copyright -->
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 Gipet. All rights reserved.</string>
+    <string>Copyright © 2026 깃독. All rights reserved.</string>
     <!-- Hardened Runtime required for Notarization -->
     <key>com.apple.security.hardened-runtime</key>
     <true/>

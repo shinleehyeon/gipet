@@ -20,6 +20,7 @@ targets:
 
     sources:
       - path: Sources/DesktopGoose
+      - path: Sources/DesktopGoose/Assets.xcassets
         excludes:
           - "**/.DS_Store"
           - Resources/**   # resources added separately below
@@ -42,14 +43,19 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         SWIFT_VERSION: "5.9"
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        CURRENT_PROJECT_VERSION: "3"
         # Carbon for RegisterEventHotKey
         OTHER_LDFLAGS: "-framework Carbon"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # MAS code signing
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "Apple Distribution"
         DEVELOPMENT_TEAM: "WN99FPJ6HV"
         PROVISIONING_PROFILE_SPECIFIER: "Gipet Mac App Store"   # ← Apple Developer에서 생성 후 이름 확인
+
+    dependencies:
+      - package: lottie-spm
+        product: Lottie
 
     preBuildScripts:
       - name: Check Secrets
@@ -57,3 +63,8 @@ targets:
           if [ -z "${GIPET_GITHUB_CLIENT_SECRET}" ]; then
             echo "warning: GIPET_GITHUB_CLIENT_SECRET not set — OAuth will not work"
           fi
+
+packages:
+  lottie-spm:
+    url: https://github.com/airbnb/lottie-spm.git
+    from: "4.4.0"
