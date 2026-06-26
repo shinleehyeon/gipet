@@ -53,7 +53,7 @@ func loadAnimation(name: String) -> LottieAnimation? {
             return LottieAnimation.filepath(url.path)
         }
     }
-    if let spm = Bundle(path: Bundle.main.bundlePath + "/Contents/Resources/DesktopGoose_DesktopGoose.bundle"),
+    if let spm = Bundle(path: Bundle.main.bundlePath + "/Contents/Resources/DesktopDog_DesktopDog.bundle"),
        let url = spm.url(forResource: name, withExtension: "json") {
         return LottieAnimation.filepath(url.path)
     }

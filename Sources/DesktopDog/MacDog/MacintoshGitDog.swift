@@ -1,16 +1,16 @@
-// Port of: MacGoose/MacintoshGoose.cs
+// Port of: MacDog/MacintoshGitDog.cs
 
 import Foundation
 import AppKit
 import CoreGraphics
 
-final class MacintoshGoose: Goose {
+final class MacintoshGitDog: GitDog {
     private var tickTimer: Timer?
     private var shadowPattern: CGColor!
     private let memesDirectory: String
     private let notesDirectory: String
-    private var settings: MacGooseSettings!
-    private var gooseView: NSView!     // Either GooseView or ChickCharacterView, swappable.
+    private var settings: MacDogSettings!
+    private var dogView: NSView!     // Either GitDogView or ChickCharacterView, swappable.
     private var nextMemeImage: NSImage?
     private var nextMemeUrl: URL?
     private var nextMemeTitle: String?
@@ -49,7 +49,7 @@ final class MacintoshGoose: Goose {
         self.Window = win
 
         let bg = BackgroundView()
-        bg.goose = self
+        bg.dog = self
         bg.frame = win.frame
         bg.autoresizingMask = [.width, .height]
         win.contentView = bg
@@ -57,9 +57,9 @@ final class MacintoshGoose: Goose {
         installCharacterView(for: CharacterSettings.shared.current, into: bg)
 
         InitShadowPattern()
-        settings = GooseConfig.settings as? MacGooseSettings
+        settings = GitDogConfig.settings as? MacDogSettings
 
-        framerateObserver = UserDefaults.standard.observe(forKey: MacGooseSettings.FrameRateKey) { [weak self] in
+        framerateObserver = UserDefaults.standard.observe(forKey: MacDogSettings.FrameRateKey) { [weak self] in
             self?.StartTimer()
         }
         behaviorObserver = NotificationCenter.default.addObserver(
@@ -87,11 +87,11 @@ final class MacintoshGoose: Goose {
             Time.TickTime()
             self.Tick()
             FriendDogManager.shared.tickAll()
-            self.gooseView.frame = self.CalculateGooseViewFrame()
+            self.dogView.frame = self.CalculateGitDogViewFrame()
             if self.hasFootmarks || self.clickIndicatorScreenPos != nil {
                 self.Window.contentView?.setNeedsDisplay(self.Window.contentView?.frame ?? .zero)
             }
-            self.gooseView.setNeedsDisplay(self.gooseView.bounds)
+            self.dogView.setNeedsDisplay(self.dogView.bounds)
         }
         if let t = tickTimer {
             RunLoop.main.add(t, forMode: .common)
@@ -100,17 +100,17 @@ final class MacintoshGoose: Goose {
     }
 
     private func installCharacterView(for kind: CharacterKind, into parent: NSView) {
-        gooseView?.removeFromSuperview()
+        dogView?.removeFromSuperview()
         let view: NSView
         switch kind {
         case .chick:
             let v = ChickCharacterView()
-            v.goose = self
+            v.dog = self
             view = v
         }
         view.frame = .zero
         parent.addSubview(view)
-        gooseView = view
+        dogView = view
     }
 
     func swapCharacter(to kind: CharacterKind) {
@@ -119,7 +119,7 @@ final class MacintoshGoose: Goose {
     }
 
     var coatVariant: Int = 0 {
-        didSet { (gooseView as? ChickCharacterView)?.coatVariant = coatVariant }
+        didSet { (dogView as? ChickCharacterView)?.coatVariant = coatVariant }
     }
 
     func dismiss() {
@@ -135,11 +135,11 @@ final class MacintoshGoose: Goose {
 
     func tickAndRedraw() {
         Tick()
-        gooseView.frame = CalculateGooseViewFrame()
-        gooseView.setNeedsDisplay(gooseView.bounds)
+        dogView.frame = CalculateGitDogViewFrame()
+        dogView.setNeedsDisplay(dogView.bounds)
     }
 
-    private func CalculateGooseViewFrame() -> CGRect {
+    private func CalculateGitDogViewFrame() -> CGRect {
         let h = Window.contentView?.frame.height ?? 0
         return CGRect(x: CGFloat(position.x) - 100,
                       y: h - CGFloat(position.y) - 100,
@@ -186,42 +186,42 @@ final class MacintoshGoose: Goose {
         let g = param as! CGContext
         g.scaleBy(x: 1, y: -1)
         g.translateBy(x: CGFloat(100 - position.x),
-                      y: CGFloat(100 - position.y) - gooseView.frame.height)
+                      y: CGFloat(100 - position.y) - dogView.frame.height)
         UpdateRig()
         let vector2 = Vector2(1.3, 0.4)
         let fromAngleDegrees = Vector2.GetFromAngleDegrees(direction)
         let fromAngleDegrees2 = Vector2.GetFromAngleDegrees(direction + 90)
         let vector3 = Vector2(0, -1)
         let num: Float = 2
-        g.setFillColor(settings.GooseWhite)
+        g.setFillColor(settings.DogWhite)
         g.setLineCap(.round)
-        FillCircleFromCenter(g, settings.GooseOrange, lFootPos, 4)
-        FillCircleFromCenter(g, settings.GooseOrange, rFootPos, 4)
-        g.setStrokeColor(settings.GooseOutline)
-        DrawLine(g, 22 + num, ToIntPoint(gooseRig.bodyCenter + fromAngleDegrees * 11),
-                              ToIntPoint(gooseRig.bodyCenter - fromAngleDegrees * 11))
-        DrawLine(g, 13 + num, ToIntPoint(gooseRig.neckBase), ToIntPoint(gooseRig.neckHeadPoint))
-        DrawLine(g, 15 + num, ToIntPoint(gooseRig.neckHeadPoint), ToIntPoint(gooseRig.head1EndPoint))
-        DrawLine(g, 10 + num, ToIntPoint(gooseRig.head1EndPoint), ToIntPoint(gooseRig.head2EndPoint))
-        g.setStrokeColor(settings.GooseOutline)
-        DrawLine(g, 15, ToIntPoint(gooseRig.underbodyCenter + fromAngleDegrees * 7),
-                        ToIntPoint(gooseRig.underbodyCenter - fromAngleDegrees * 7))
-        g.setStrokeColor(settings.GooseWhite)
-        DrawLine(g, 22, ToIntPoint(gooseRig.bodyCenter + fromAngleDegrees * 11),
-                        ToIntPoint(gooseRig.bodyCenter - fromAngleDegrees * 11))
-        DrawLine(g, 13, ToIntPoint(gooseRig.neckBase), ToIntPoint(gooseRig.neckHeadPoint))
-        DrawLine(g, 15, ToIntPoint(gooseRig.neckHeadPoint), ToIntPoint(gooseRig.head1EndPoint))
-        DrawLine(g, 10, ToIntPoint(gooseRig.head1EndPoint), ToIntPoint(gooseRig.head2EndPoint))
-        g.setStrokeColor(settings.GooseOrange)
-        let vector4 = gooseRig.head2EndPoint + fromAngleDegrees * 5
-        DrawLine(g, 9, ToIntPoint(gooseRig.head2EndPoint), ToIntPoint(vector4))
-        let baseEye = gooseRig.neckHeadPoint + vector3 * 3 + fromAngleDegrees * 5
+        FillCircleFromCenter(g, settings.DogOrange, lFootPos, 4)
+        FillCircleFromCenter(g, settings.DogOrange, rFootPos, 4)
+        g.setStrokeColor(settings.DogOutline)
+        DrawLine(g, 22 + num, ToIntPoint(dogRig.bodyCenter + fromAngleDegrees * 11),
+                              ToIntPoint(dogRig.bodyCenter - fromAngleDegrees * 11))
+        DrawLine(g, 13 + num, ToIntPoint(dogRig.neckBase), ToIntPoint(dogRig.neckHeadPoint))
+        DrawLine(g, 15 + num, ToIntPoint(dogRig.neckHeadPoint), ToIntPoint(dogRig.head1EndPoint))
+        DrawLine(g, 10 + num, ToIntPoint(dogRig.head1EndPoint), ToIntPoint(dogRig.head2EndPoint))
+        g.setStrokeColor(settings.DogOutline)
+        DrawLine(g, 15, ToIntPoint(dogRig.underbodyCenter + fromAngleDegrees * 7),
+                        ToIntPoint(dogRig.underbodyCenter - fromAngleDegrees * 7))
+        g.setStrokeColor(settings.DogWhite)
+        DrawLine(g, 22, ToIntPoint(dogRig.bodyCenter + fromAngleDegrees * 11),
+                        ToIntPoint(dogRig.bodyCenter - fromAngleDegrees * 11))
+        DrawLine(g, 13, ToIntPoint(dogRig.neckBase), ToIntPoint(dogRig.neckHeadPoint))
+        DrawLine(g, 15, ToIntPoint(dogRig.neckHeadPoint), ToIntPoint(dogRig.head1EndPoint))
+        DrawLine(g, 10, ToIntPoint(dogRig.head1EndPoint), ToIntPoint(dogRig.head2EndPoint))
+        g.setStrokeColor(settings.DogOrange)
+        let vector4 = dogRig.head2EndPoint + fromAngleDegrees * 5
+        DrawLine(g, 9, ToIntPoint(dogRig.head2EndPoint), ToIntPoint(vector4))
+        let baseEye = dogRig.neckHeadPoint + vector3 * 3 + fromAngleDegrees * 5
         let sideL = -fromAngleDegrees2 * vector2 * 5
         let sideR =  fromAngleDegrees2 * vector2 * 5
         let pos  = baseEye + sideL
         let pos2 = baseEye + sideR
-        FillCircleFromCenter(g, settings.GooseEye, pos, 2)
-        FillCircleFromCenter(g, settings.GooseEye, pos2, 2)
+        FillCircleFromCenter(g, settings.DogEye, pos, 2)
+        FillCircleFromCenter(g, settings.DogEye, pos2, 2)
     }
 
     private func DrawLine(_ g: CGContext, _ penWidth: Float, _ from: CGPoint, _ to: CGPoint) {
@@ -291,7 +291,7 @@ final class MacintoshGoose: Goose {
             let files = ((try? fm.contentsOfDirectory(atPath: memesDirectory)) ?? [])
                 .filter { !$0.hasPrefix(".") }
                 .map { (memesDirectory as NSString).appendingPathComponent($0) }
-            let pool: [String] = files.isEmpty ? Goose.ImageUrls : files
+            let pool: [String] = files.isEmpty ? GitDog.ImageUrls : files
             let text = pickAvoidingRepeat(pool, last: lastMemePath)
             lastMemePath = text
             url = text.hasPrefix("https://") ? URL(string: text) : URL(fileURLWithPath: text)

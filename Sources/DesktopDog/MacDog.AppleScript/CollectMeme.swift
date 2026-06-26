@@ -1,4 +1,4 @@
-// Port of: MacGoose.AppleScript/CollectMeme.cs
+// Port of: MacDog.AppleScript/CollectMeme.cs
 
 import Foundation
 import AppKit
@@ -23,7 +23,7 @@ final class CollectMeme: ScriptCommand {
                 url = nil
             }
             let image: NSImage? = url.flatMap { NSImage(contentsOf: $0) }
-            AppDelegate.SharedAppDelegate.Goose?.ShowNextMeme(image, url, GetStringArg("title"))
+            AppDelegate.SharedAppDelegate.gitDog?.ShowNextMeme(image, url, GetStringArg("title"))
         }
         return NSNumber(value: true)
     }

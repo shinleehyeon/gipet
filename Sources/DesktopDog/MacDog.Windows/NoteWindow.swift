@@ -1,4 +1,4 @@
-// Port of: MacGoose.Windows/NoteWindow.cs
+// Port of: MacDog.Windows/NoteWindow.cs
 
 import AppKit
 import CoreGraphics
@@ -47,7 +47,7 @@ private final class NoteContentView: NSView {
     }
 }
 
-final class NoteWindow: GooseWindow {
+final class NoteWindow: GitDogWindow {
     private var textView: NSTextView!
 
     init(title: String, text: String) {

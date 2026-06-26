@@ -1,4 +1,4 @@
-// Port of: MacGoose.AppleScript/OpenMemesFolder.cs
+// Port of: MacDog.AppleScript/OpenMemesFolder.cs
 
 import Foundation
 import AppKit

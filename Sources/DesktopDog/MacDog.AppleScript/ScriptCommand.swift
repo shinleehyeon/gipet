@@ -1,4 +1,4 @@
-// Port of: MacGoose.AppleScript/ScriptCommand.cs
+// Port of: MacDog.AppleScript/ScriptCommand.cs
 
 import Foundation
 

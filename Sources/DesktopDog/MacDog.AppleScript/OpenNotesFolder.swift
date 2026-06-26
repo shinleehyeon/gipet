@@ -1,4 +1,4 @@
-// Port of: MacGoose.AppleScript/OpenNotesFolder.cs
+// Port of: MacDog.AppleScript/OpenNotesFolder.cs
 
 import Foundation
 import AppKit

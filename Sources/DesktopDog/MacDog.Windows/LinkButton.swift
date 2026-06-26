@@ -1,4 +1,4 @@
-// Port of: MacGoose.Windows/LinkButton.cs
+// Port of: MacDog.Windows/LinkButton.cs
 
 import AppKit
 import CoreGraphics

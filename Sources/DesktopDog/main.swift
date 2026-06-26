@@ -1,4 +1,4 @@
-// Port of: MacGoose/MainClass.cs
+// Port of: MacDog/MainClass.cs
 
 import AppKit
 

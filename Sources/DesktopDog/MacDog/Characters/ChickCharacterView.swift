@@ -8,7 +8,7 @@ import AppKit
 import CoreGraphics
 
 final class ChickCharacterView: NSView {
-    weak var goose: MacintoshGoose?
+    weak var dog: MacintoshGitDog?
 
     // 0 = original brown, 1 = reddish auburn, 2 = golden honey
     var coatVariant: Int = 0
@@ -41,20 +41,20 @@ final class ChickCharacterView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let g = NSGraphicsContext.current?.cgContext,
-              let goose else { return }
+              let dog else { return }
 
         g.saveGState()
-        // Same coord transform as MacintoshGoose.Render().
+        // Same coord transform as MacintoshGitDog.Render().
         g.scaleBy(x: 1, y: -1)
-        g.translateBy(x: CGFloat(100 - goose.position.x),
-                      y: CGFloat(100 - goose.position.y) - bounds.height)
+        g.translateBy(x: CGFloat(100 - dog.position.x),
+                      y: CGFloat(100 - dog.position.y) - bounds.height)
 
         // Critical: keep rig data fresh every frame. Several AI behaviors use
-        // gooseRig.head2EndPoint; stale rig data causes odd off-screen motion.
-        goose.UpdateRig()
+        // dogRig.head2EndPoint; stale rig data causes odd off-screen motion.
+        dog.UpdateRig()
 
-        let dir = Vector2.GetFromAngleDegrees(goose.direction)
-        let perp = Vector2.GetFromAngleDegrees(goose.direction + 90)
+        let dir = Vector2.GetFromAngleDegrees(dog.direction)
+        let perp = Vector2.GetFromAngleDegrees(dog.direction + 90)
         let up = Vector2(0, -1)
 
         // --- Palette ---
@@ -63,16 +63,16 @@ final class ChickCharacterView: NSView {
         let coatDark = pal.dark
         let tan = pal.tan
         let nose = CGColor(red: 0.07, green: 0.07, blue: 0.07, alpha: 1)
-        let bodyCenter = goose.gooseRig.bodyCenter
-        let underbodyCenter = goose.gooseRig.underbodyCenter
+        let bodyCenter = dog.dogRig.bodyCenter
+        let underbodyCenter = dog.dogRig.underbodyCenter
 
         g.setLineCap(.round)
 
         // --- Legs (4 legs look) ---
         // Back legs follow goose foot anchors (animated by solver).
-        let footL = goose.lFootPos
-        let footR = goose.rFootPos
-        if goose.isResting {
+        let footL = dog.lFootPos
+        let footR = dog.rFootPos
+        if dog.isResting {
             // Sitting: rear folds under into haunches with the rear paws tucked
             // forward; the front legs stay planted.
             fillEllipse(g, color: coat, center: bodyCenter - dir * 13 - perp * 7, xR: 7, yR: 9)
@@ -100,46 +100,46 @@ final class ChickCharacterView: NSView {
         let underbodyRearLength: Float = 13
         drawCapsule(g, from: bodyCenter + dir * bodyFrontLength, to: bodyCenter - dir * bodyRearLength,
                     width: 22 + outlinePad, color: coatDark)
-        drawCapsule(g, from: goose.gooseRig.neckBase, to: goose.gooseRig.neckHeadPoint,
+        drawCapsule(g, from: dog.dogRig.neckBase, to: dog.dogRig.neckHeadPoint,
                     width: 13 + outlinePad, color: coatDark)
-        drawCapsule(g, from: goose.gooseRig.neckHeadPoint, to: goose.gooseRig.head1EndPoint,
+        drawCapsule(g, from: dog.dogRig.neckHeadPoint, to: dog.dogRig.head1EndPoint,
                     width: 15 + outlinePad, color: coatDark)
-        drawCapsule(g, from: goose.gooseRig.head1EndPoint, to: goose.gooseRig.head2EndPoint,
+        drawCapsule(g, from: dog.dogRig.head1EndPoint, to: dog.dogRig.head2EndPoint,
                     width: 10 + outlinePad, color: coatDark)
         drawCapsule(g, from: underbodyCenter + dir * underbodyFrontLength, to: underbodyCenter - dir * underbodyRearLength,
                     width: 15, color: tan)
         drawCapsule(g, from: bodyCenter + dir * bodyFrontLength, to: bodyCenter - dir * bodyRearLength,
                     width: 22, color: coat)
-        drawCapsule(g, from: goose.gooseRig.neckBase, to: goose.gooseRig.neckHeadPoint,
+        drawCapsule(g, from: dog.dogRig.neckBase, to: dog.dogRig.neckHeadPoint,
                     width: 13, color: coat)
-        drawCapsule(g, from: goose.gooseRig.neckHeadPoint, to: goose.gooseRig.head1EndPoint,
+        drawCapsule(g, from: dog.dogRig.neckHeadPoint, to: dog.dogRig.head1EndPoint,
                     width: 15, color: coat)
-        drawCapsule(g, from: goose.gooseRig.head1EndPoint, to: goose.gooseRig.head2EndPoint,
+        drawCapsule(g, from: dog.dogRig.head1EndPoint, to: dog.dogRig.head2EndPoint,
                     width: 10, color: coat)
 
         // --- Face (replace beak with snout) ---
-        let snoutStart = goose.gooseRig.head2EndPoint
+        let snoutStart = dog.dogRig.head2EndPoint
         let snoutEnd = snoutStart + dir * 6
         drawCapsule(g, from: snoutStart, to: snoutEnd, width: 8, color: tan)
         fillCircle(g, color: nose, center: snoutEnd + dir * 0.8, radius: 2.2)
 
         // --- Ears (simple floppy ears) ---
-        let earBaseL = goose.gooseRig.neckHeadPoint - perp * 4 + up * 1
-        let earBaseR = goose.gooseRig.neckHeadPoint + perp * 4 + up * 1
+        let earBaseL = dog.dogRig.neckHeadPoint - perp * 4 + up * 1
+        let earBaseR = dog.dogRig.neckHeadPoint + perp * 4 + up * 1
         drawCapsule(g, from: earBaseL, to: earBaseL + up * -5 + dir * -1.5, width: 4, color: coatDark)
         drawCapsule(g, from: earBaseR, to: earBaseR + up * -5 + dir * -1.5, width: 4, color: coatDark)
 
         // --- Eyes ---
-        let eyeBase = goose.gooseRig.neckHeadPoint + up * 2 + dir * 3.8
+        let eyeBase = dog.dogRig.neckHeadPoint + up * 2 + dir * 3.8
         let eyeL = eyeBase - perp * 3
         let eyeR = eyeBase + perp * 3
         fillCircle(g, color: nose, center: eyeL, radius: 1.8)
         fillCircle(g, color: nose, center: eyeR, radius: 1.8)
 
         // --- Speech bubble (e.g. a "커밋해!" nudge) ---
-        if let speech = goose.speechText, !speech.isEmpty {
-            drawSpeechBubble(g, text: speech, anchor: goose.gooseRig.neckHeadPoint,
-                             up: up, dogPos: goose.position)
+        if let speech = dog.speechText, !speech.isEmpty {
+            drawSpeechBubble(g, text: speech, anchor: dog.dogRig.neckHeadPoint,
+                             up: up, dogPos: dog.position)
         }
 
         g.restoreGState()
@@ -224,7 +224,7 @@ final class ChickCharacterView: NSView {
         g.restoreGState()
     }
 
-    // MARK: - Drawing primitives (mirror MacintoshGoose's FillCircleFromCenter / DrawLine)
+    // MARK: - Drawing primitives (mirror MacintoshGitDog's FillCircleFromCenter / DrawLine)
 
     private func cg(_ v: Vector2) -> CGPoint {
         CGPoint(x: CGFloat(v.x), y: CGFloat(v.y))

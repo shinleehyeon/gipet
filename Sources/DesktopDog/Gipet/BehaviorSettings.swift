@@ -26,10 +26,10 @@ final class BehaviorSettings: ObservableObject {
         NotificationCenter.default.post(name: .behaviorSettingsChanged, object: nil)
     }
 
-    /// Build the weighted task list for the Goose's Deck picker.
+    /// Build the weighted task list for the GitDog's Deck picker.
     /// BringFriends is handled separately via a time-based gate, not this list.
-    func buildWeightedList() -> [Goose.GooseTask] {
-        var list: [Goose.GooseTask] = []
+    func buildWeightedList() -> [GitDog.GitDogTask] {
+        var list: [GitDog.GitDogTask] = []
         list += Array(repeating: .CollectWindow_Meme,    count: memeWeight)
         list += Array(repeating: .CollectWindow_Notepad, count: noteWeight)
         list += Array(repeating: .TrackMud,              count: mudWeight)

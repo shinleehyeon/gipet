@@ -2,21 +2,21 @@
 import PackageDescription
 
 let package = Package(
-    name: "DesktopGoose",
+    name: "DesktopDog",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "DesktopGoose", targets: ["DesktopGoose"]),
+        .executable(name: "DesktopDog", targets: ["DesktopDog"]),
     ],
     dependencies: [
         .package(url: "https://github.com/airbnb/lottie-spm.git", from: "4.4.0"),
     ],
     targets: [
         .executableTarget(
-            name: "DesktopGoose",
+            name: "DesktopDog",
             dependencies: [
                 .product(name: "Lottie", package: "lottie-spm"),
             ],
-            path: "Sources/DesktopGoose",
+            path: "Sources/DesktopDog",
             resources: [
                 .copy("Resources/Memes"),
                 .copy("Resources/Notes"),

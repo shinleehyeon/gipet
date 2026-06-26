@@ -2,8 +2,8 @@ import Foundation
 import AppKit
 
 private final class FriendDog {
-    let dog: MacintoshGoose
-    init(_ dog: MacintoshGoose) { self.dog = dog }
+    let dog: MacintoshGitDog
+    init(_ dog: MacintoshGitDog) { self.dog = dog }
 }
 
 final class FriendDogManager {
@@ -66,7 +66,7 @@ final class FriendDogManager {
         }
 
         for i in 0..<2 {
-            let dog = MacintoshGoose(memesDirectory: "", notesDirectory: "")
+            let dog = MacintoshGitDog(memesDirectory: "", notesDirectory: "")
             dog.makeExternallyManaged()
             dog.swapCharacter(to: .chick)
             dog.coatVariant = i + 1
@@ -137,7 +137,7 @@ final class FriendDogManager {
         }
     }
 
-    // Called each frame by MacintoshGoose's tick timer.
+    // Called each frame by MacintoshGitDog's tick timer.
     func tickAll() {
         for f in friends {
             f.dog.tickAndRedraw()

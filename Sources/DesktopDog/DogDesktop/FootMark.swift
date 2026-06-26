@@ -1,4 +1,4 @@
-// Port of: GooseDesktop/FootMark.cs
+// Port of: DogDesktop/FootMark.cs
 
 import Foundation
 

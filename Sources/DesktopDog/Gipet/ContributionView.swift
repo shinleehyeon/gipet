@@ -58,7 +58,7 @@ private enum Layout {
 
 struct ContributionView: View {
     @ObservedObject var model: GipetViewModel
-    var onOpenGooseMenu: () -> Void = {}
+    var onOpenDogMenu: () -> Void = {}
     var onQuit: () -> Void = {}
     var body: some View {
         Group {

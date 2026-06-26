@@ -1,9 +1,9 @@
-// Port of: MacGoose.Windows/MemeWindow.cs
+// Port of: MacDog.Windows/MemeWindow.cs
 
 import AppKit
 import CoreGraphics
 
-final class MemeWindow: GooseWindow {
+final class MemeWindow: GitDogWindow {
     init(image: NSImage, url: URL) {
         super.init(width: 400, height: 400)
         self.representedURL = url

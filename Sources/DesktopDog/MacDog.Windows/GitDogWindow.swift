@@ -1,9 +1,9 @@
-// Port of: MacGoose.Windows/GooseWindow.cs
+// Port of: MacDog.Windows/GitDogWindow.cs
 
 import AppKit
 import CoreGraphics
 
-class GooseWindow: NSWindow, Goose.IMovableForm {
+class GitDogWindow: NSWindow, GitDog.IMovableForm {
     private(set) var CloseAction: (() -> Void)?
 
     var Width: Int { Int(frame.size.width) }

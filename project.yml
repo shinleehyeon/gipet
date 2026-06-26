@@ -19,8 +19,8 @@ targets:
     deploymentTarget: "13.0"
 
     sources:
-      - path: Sources/DesktopGoose
-      - path: Sources/DesktopGoose/Assets.xcassets
+      - path: Sources/DesktopDog
+      - path: Sources/DesktopDog/Assets.xcassets
         excludes:
           - "**/.DS_Store"
           - Resources/**   # resources added separately below
@@ -30,9 +30,9 @@ targets:
         script: |
           RES="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources"
           mkdir -p "$RES"
-          cp -f  "${SRCROOT}/Sources/DesktopGoose/Resources/AppIcon.icns" "$RES/"
-          cp -rf "${SRCROOT}/Sources/DesktopGoose/Resources/Memes" "$RES/"
-          cp -rf "${SRCROOT}/Sources/DesktopGoose/Resources/Notes" "$RES/"
+          cp -f  "${SRCROOT}/Sources/DesktopDog/Resources/AppIcon.icns" "$RES/"
+          cp -rf "${SRCROOT}/Sources/DesktopDog/Resources/Memes" "$RES/"
+          cp -rf "${SRCROOT}/Sources/DesktopDog/Resources/Notes" "$RES/"
 
     settings:
       base:

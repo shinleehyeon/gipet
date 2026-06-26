@@ -17,14 +17,14 @@ BUNDLE_ID="com.gipet.app"
 echo "▸ Building (release)…"
 swift build -c release
 
-BIN="$(swift build -c release --show-bin-path)/DesktopGoose"
+BIN="$(swift build -c release --show-bin-path)/DesktopDog"
 [ -f "$BIN" ] || { echo "✗ binary not found at $BIN"; exit 1; }
 
 echo "▸ Assembling $APP …"
 rm -rf "$APP"
 mkdir -p "$MACOS" "$RES"
 cp "$BIN" "$MACOS/$EXE_NAME"
-cp "$ROOT/Sources/DesktopGoose/Resources/AppIcon.icns" "$RES/AppIcon.icns"
+cp "$ROOT/Sources/DesktopDog/Resources/AppIcon.icns" "$RES/AppIcon.icns"
 chmod +x "$MACOS/$EXE_NAME"
 
 cat > "$CONTENTS/Info.plist" <<PLIST

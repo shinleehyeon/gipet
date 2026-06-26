@@ -1,15 +1,15 @@
-// Port of: MacGoose/GooseView.cs
+// Port of: MacDog/GitDogView.cs
 
 import AppKit
 import CoreGraphics
 
-final class GooseView: NSView {
-    weak var goose: MacintoshGoose?
+final class GitDogView: NSView {
+    weak var dog: MacintoshGitDog?
 
     override func draw(_ dirtyRect: NSRect) {
         guard let g = NSGraphicsContext.current?.cgContext else { return }
         g.saveGState()
-        goose?.Render(g)
+        dog?.Render(g)
         g.restoreGState()
     }
 }

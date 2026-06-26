@@ -1,4 +1,4 @@
-// Port of: MacGoose/AppDelegate.cs
+// Port of: MacDog/AppDelegate.cs
 
 import Foundation
 import AppKit
@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApplication.shared.delegate as! AppDelegate
     }
 
-    private(set) var Goose: MacintoshGoose?
+    private(set) var gitDog: MacintoshGitDog?
     // Last dad joke shown, so the celebration doesn't repeat back-to-back.
     private var lastJoke: String?
 
@@ -30,12 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var NotesDirectory: URL { AppDelegate.gipetSupportDir("Notes") }
     static var HomeDirectory: String { NSHomeDirectory() }
 
-    // Character toggle (goose/dachshund).
+    // Character toggle (dog/dachshund).
     private var statusItem: NSStatusItem?
 
     // Gipet — GitHub streak popover + commit watcher.
     private let gipet = MainStatusItemMenuManager()
-    private var gooseMenu: NSMenu?
+    private var dogMenu: NSMenu?
     private var rightClickMonitor: Any?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -51,9 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        GooseConfig.settings = MacGooseSettings()
+        GitDogConfig.settings = MacDogSettings()
         seedBundleResources()
-        Goose = MacintoshGoose(memesDirectory: MemesDirectory.path,
+        gitDog = MacintoshGitDog(memesDirectory: MemesDirectory.path,
                                notesDirectory: NotesDirectory.path)
         NSApplication.shared.activate(ignoringOtherApps: true)
         installStatusItem()
@@ -68,46 +68,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // No commit today → send the dog to fetch something: randomly an
         // image (Memes/) or a note (Notes/).
         gipet.onNoCommitNudge = { [weak self] in
-            let task: Goose.GooseTask = Bool.random() ? .CollectWindow_Meme : .CollectWindow_Notepad
-            self?.Goose?.requestTask(task)
+            let task: GitDog.GitDogTask = Bool.random() ? .CollectWindow_Meme : .CollectWindow_Notepad
+            self?.gitDog?.requestTask(task)
         }
         // Commit reminder bubble — fires once a minute while you haven't committed.
         gipet.onNoCommitSay = { [weak self] in
-            self?.Goose?.Say("커밋해! 🐾", duration: 5)
+            self?.gitDog?.Say("커밋해! 🐾", duration: 5)
         }
         // Periodic dad joke for fun.
         gipet.onTellJoke = { [weak self] in
             let joke = DadJokes.random(avoiding: self?.lastJoke)
             self?.lastJoke = joke
-            self?.Goose?.Say(joke, duration: 6)
+            self?.gitDog?.Say(joke, duration: 6)
         }
         // Committed today → dog does a heart trail then tells a dad joke (once per day).
         gipet.onDidCommit = { [weak self] in
-            self?.Goose?.requestTask(.HeartTrail)
+            self?.gitDog?.requestTask(.HeartTrail)
             let joke = DadJokes.random(avoiding: self?.lastJoke)
             self?.lastJoke = joke
-            self?.Goose?.Say(joke, duration: 6)
+            self?.gitDog?.Say(joke, duration: 6)
         }
 
         // Stats changed → refresh the menu-bar icon (mood + streak).
         gipet.onStateChange = { [weak self] in
             self?.refreshTitle()
-            self?.Goose?.committedToday = GipetViewModel.shared.stats.committedToday
+            self?.gitDog?.committedToday = GipetViewModel.shared.stats.committedToday
         }
         gipet.start()
     }
 
     private func installRightClickMove() {
         rightClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: .rightMouseDown) { [weak self] _ in
-            guard let goose = self?.Goose else { return }
+            guard let dog = self?.gitDog else { return }
             let screenPos = NSEvent.mouseLocation
             let screenH = NSScreen.main?.frame.height ?? 0
             let gamePos = Vector2(Float(screenPos.x), Float(screenH - screenPos.y))
-            goose.lockedTarget = gamePos
-            goose.onLockedTargetArrival = { }
-            goose.SetTask(.Wander, honck: false)
-            goose.clickIndicatorScreenPos = screenPos
-            goose.clickIndicatorStartTime = Time.time
+            dog.lockedTarget = gamePos
+            dog.onLockedTargetArrival = { }
+            dog.SetTask(.Wander, honck: false)
+            dog.clickIndicatorScreenPos = screenPos
+            dog.clickIndicatorStartTime = Time.time
         }
     }
 
@@ -151,13 +151,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        if let gw = notification.object as? GooseWindow {
+        if let gw = notification.object as? GitDogWindow {
             gw.CloseAction?()
         }
     }
 
     func windowWillMiniaturize(_ notification: Notification) {
-        if let gw = notification.object as? GooseWindow {
+        if let gw = notification.object as? GitDogWindow {
             gw.CloseAction?()
         }
     }
@@ -201,15 +201,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             devMenu.addItem(.separator())
             devMenu.addItem(withTitle: "하루 상태 초기화",  action: #selector(devResetDaily),      keyEquivalent: "").target = self
             devMenu.addItem(withTitle: "기여 새로고침",     action: #selector(devForceRefresh),    keyEquivalent: "").target = self
-            devMenu.addItem(withTitle: "강아지 상태 출력",  action: #selector(devPrintGooseState), keyEquivalent: "").target = self
+            devMenu.addItem(withTitle: "강아지 상태 출력",  action: #selector(devPrintDogState), keyEquivalent: "").target = self
             let devItem = NSMenuItem(title: "🛠 개발자", action: nil, keyEquivalent: "")
             devItem.submenu = devMenu
             menu.addItem(devItem)
             menu.addItem(.separator())
         }
         menu.addItem(withTitle: "Quit",       action: #selector(menuQuit), keyEquivalent: "q").target = self
-        // Left-click opens the Gipet popover; right-click shows the goose menu.
-        self.gooseMenu = menu
+        // Left-click opens the Gipet popover; right-click shows the dog menu.
+        self.dogMenu = menu
         if let button = item.button {
             button.target = self
             button.action = #selector(statusItemClicked(_:))
@@ -223,21 +223,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let isRight = NSApp.currentEvent?.type == .rightMouseUp
             || NSApp.currentEvent?.modifierFlags.contains(.control) == true
         if isRight {
-            showGooseMenu(from: sender)
+            showDogMenu(from: sender)
         } else {
             gipet.toggle(from: sender)
         }
     }
 
-    private func showGooseMenu(from button: NSStatusBarButton) {
-        guard let menu = gooseMenu, let item = statusItem else { return }
+    private func showDogMenu(from button: NSStatusBarButton) {
+        guard let menu = dogMenu, let item = statusItem else { return }
         item.menu = menu                    // attach so the button draws it...
         button.performClick(nil)            // ...then pop it,
         item.menu = nil                     // and detach so left-click stays ours.
     }
 
-    private func popupGooseMenuAtCursor() {
-        guard let menu = gooseMenu else { return }
+    private func popupDogMenuAtCursor() {
+        guard let menu = dogMenu else { return }
         NSApplication.shared.activate(ignoringOtherApps: true)
         menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
@@ -355,7 +355,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         button.imagePosition = .imageOnly
         button.title = ""
-        gooseMenu?.items.forEach { mi in
+        dogMenu?.items.forEach { mi in
             if let raw = mi.representedObject as? String,
                let kind = CharacterKind(rawValue: raw) {
                 mi.state = (CharacterSettings.shared.current == kind) ? .on : .off
@@ -364,7 +364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func applyCharacterChoice() {
-        Goose?.swapCharacter(to: CharacterSettings.shared.current)
+        gitDog?.swapCharacter(to: CharacterSettings.shared.current)
     }
 
     @objc private func pickCharacter(_ sender: NSMenuItem) {
@@ -378,19 +378,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func menuSpeak() {
         let joke = DadJokes.random(avoiding: lastJoke)
         lastJoke = joke
-        Goose?.Say(joke, duration: 6)
+        gitDog?.Say(joke, duration: 6)
     }
-    @objc private func menuHonk()       { Goose?.PlaySound(.HONCC) }
-    @objc private func menuNabMouse()   { Goose?.requestTask(.NabMouse) }
-    @objc private func menuWander()     { Goose?.SetTask(.Wander,   honck: false) }
-    @objc private func menuHeartTrail() { Goose?.requestTask(.HeartTrail) }
-    @objc private func menuTrackMud()   { Goose?.requestTask(.TrackMud) }
-    @objc private func menuBringFriends() { Goose?.requestTask(.BringFriends) }
+    @objc private func menuHonk()       { gitDog?.PlaySound(.HONCC) }
+    @objc private func menuNabMouse()   { gitDog?.requestTask(.NabMouse) }
+    @objc private func menuWander()     { gitDog?.SetTask(.Wander,   honck: false) }
+    @objc private func menuHeartTrail() { gitDog?.requestTask(.HeartTrail) }
+    @objc private func menuTrackMud()   { gitDog?.requestTask(.TrackMud) }
+    @objc private func menuBringFriends() { gitDog?.requestTask(.BringFriends) }
     @objc private func menuQuit()       { NSApp.terminate(nil) }
 
     // MARK: - Dev actions
     @objc private func devSpawnFriends() {
-        guard Goose != nil else { return }
+        guard gitDog != nil else { return }
         let screen = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
         let w = Float(screen.width), h = Float(screen.height)
         FriendDogManager.shared.spawnFriends(near: Vector2(w / 2, h / 2), screenWidth: w, screenHeight: h)
@@ -400,26 +400,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSLog("[DEV] Friends spawned directly")
     }
 
-    @objc private func devTriggerMeme()    { Goose?.SetTask(.CollectWindow_Meme,    honck: false) }
-    @objc private func devTriggerNote()    { Goose?.SetTask(.CollectWindow_Notepad, honck: false) }
+    @objc private func devTriggerMeme()    { gitDog?.SetTask(.CollectWindow_Meme,    honck: false) }
+    @objc private func devTriggerNote()    { gitDog?.SetTask(.CollectWindow_Notepad, honck: false) }
     @objc private func devResetDaily()     { gipet.devResetDailyState() }
     @objc private func devForceRefresh()   { gipet.devForceRefresh() }
 
-    @objc private func devPrintGooseState() {
-        guard let g = Goose else { NSLog("[DEV] No goose"); return }
+    @objc private func devPrintDogState() {
+        guard let g = gitDog else { NSLog("[DEV] No dog"); return }
         NSLog("[DEV] pos=(%.0f,%.0f) speed=%.0f", g.position.x, g.position.y, g.currentSpeed)
     }
 
     private func installFriendDogHook() {
-        Goose?.onBringFriendsReturning = { [weak self] in
-            guard let dog = self?.Goose else { return }
+        gitDog?.onBringFriendsReturning = { [weak self] in
+            guard let dog = self?.gitDog else { return }
             FriendDogManager.shared.spawnFriends(
                 near: dog.position,
                 screenWidth: dog.GetMainWindowWidth(),
                 screenHeight: dog.GetMainWindowHeight()
             )
         }
-        Goose?.onBringFriendsArrived = {
+        gitDog?.onBringFriendsArrived = {
             FriendDogManager.shared.startDialogue()
         }
     }

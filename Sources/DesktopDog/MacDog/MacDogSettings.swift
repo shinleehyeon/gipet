@@ -1,21 +1,21 @@
-// Port of: MacGoose/MacGooseSettings.cs
+// Port of: MacDog/MacDogSettings.cs
 
 import Foundation
 import AppKit
 import CoreGraphics
 
-final class MacGooseSettings: GooseConfig.ConfigSettings {
+final class MacDogSettings: GitDogConfig.ConfigSettings {
     static let CanAttackAtRandomKey = "CanAttackAtRandom"
     static let MinWanderingTimeKey  = "MinWanderingTimeSeconds"
     static let MaxWanderingTimeKey  = "MaxWanderingTimeSeconds"
     static let FirstWanderTimeKey   = "FirstWanderTimeSeconds"
     static let FrameRateKey         = "FrameRate"
     static let UseCustomColorsKey   = "UseCustomColors"
-    static let WhiteColorKey        = "GooseWhite"
-    static let OrangeColorKey       = "GooseOrange"
-    static let OutlineColorKey      = "GooseOutline"
-    static let EyeColorKey          = "GooseEye"
-    static let MudColorKey          = "GooseMud"
+    static let WhiteColorKey        = "DogWhite"
+    static let OrangeColorKey       = "DogOrange"
+    static let OutlineColorKey      = "DogOutline"
+    static let EyeColorKey          = "DogEye"
+    static let MudColorKey          = "DogMud"
     static let SoundVolumeKey       = "SoundVolume"
 
     private static let WhiteColorDefault   = "#ffffff"
@@ -29,49 +29,49 @@ final class MacGooseSettings: GooseConfig.ConfigSettings {
     var UseCustomColors: Bool = false
 
     override var CanAttackAtRandom: Bool {
-        get { UserDefaults.standard.bool(forKey: MacGooseSettings.CanAttackAtRandomKey) }
+        get { UserDefaults.standard.bool(forKey: MacDogSettings.CanAttackAtRandomKey) }
         set { super.CanAttackAtRandom = newValue }
     }
     override var MinWanderingTimeSeconds: Float {
-        get { UserDefaults.standard.float(forKey: MacGooseSettings.MinWanderingTimeKey) }
+        get { UserDefaults.standard.float(forKey: MacDogSettings.MinWanderingTimeKey) }
         set { super.MinWanderingTimeSeconds = newValue }
     }
     override var MaxWanderingTimeSeconds: Float {
-        get { UserDefaults.standard.float(forKey: MacGooseSettings.MaxWanderingTimeKey) }
+        get { UserDefaults.standard.float(forKey: MacDogSettings.MaxWanderingTimeKey) }
         set { super.MaxWanderingTimeSeconds = newValue }
     }
     override var FirstWanderTimeSeconds: Float {
-        get { UserDefaults.standard.float(forKey: MacGooseSettings.FirstWanderTimeKey) }
+        get { UserDefaults.standard.float(forKey: MacDogSettings.FirstWanderTimeKey) }
         set { super.FirstWanderTimeSeconds = newValue }
     }
     override var FrameRate: Float {
-        get { UserDefaults.standard.float(forKey: MacGooseSettings.FrameRateKey) }
+        get { UserDefaults.standard.float(forKey: MacDogSettings.FrameRateKey) }
         set { super.FrameRate = newValue }
     }
 
-    private(set) var GooseWhite:   CGColor!
-    private(set) var GooseOrange:  CGColor!
-    private(set) var GooseOutline: CGColor!
-    private(set) var GooseEye:     CGColor!
-    private(set) var GooseMud:     CGColor!
+    private(set) var DogWhite:   CGColor!
+    private(set) var DogOrange:  CGColor!
+    private(set) var DogOutline: CGColor!
+    private(set) var DogEye:     CGColor!
+    private(set) var DogMud:     CGColor!
 
     override init() {
         super.init()
         let d = UserDefaults.standard
         d.register(defaults: [
-            MacGooseSettings.CanAttackAtRandomKey: false,
+            MacDogSettings.CanAttackAtRandomKey: false,
             // User-tuned: bring memes more often → shorter wander interludes.
-            MacGooseSettings.MinWanderingTimeKey:  Float(4),
-            MacGooseSettings.MaxWanderingTimeKey:  Float(10),
-            MacGooseSettings.FirstWanderTimeKey:   Float(3),
-            MacGooseSettings.FrameRateKey:         Float(60),
-            MacGooseSettings.UseCustomColorsKey:   false,
-            MacGooseSettings.WhiteColorKey:        MacGooseSettings.WhiteColorDefault,
-            MacGooseSettings.OrangeColorKey:       MacGooseSettings.OrangeColorDefault,
-            MacGooseSettings.OutlineColorKey:      MacGooseSettings.OutlineColorDefault,
-            MacGooseSettings.EyeColorKey:          MacGooseSettings.EyeColorDefault,
-            MacGooseSettings.MudColorKey:          MacGooseSettings.MudColorDefault,
-            MacGooseSettings.SoundVolumeKey:       Float(1)
+            MacDogSettings.MinWanderingTimeKey:  Float(4),
+            MacDogSettings.MaxWanderingTimeKey:  Float(10),
+            MacDogSettings.FirstWanderTimeKey:   Float(3),
+            MacDogSettings.FrameRateKey:         Float(60),
+            MacDogSettings.UseCustomColorsKey:   false,
+            MacDogSettings.WhiteColorKey:        MacDogSettings.WhiteColorDefault,
+            MacDogSettings.OrangeColorKey:       MacDogSettings.OrangeColorDefault,
+            MacDogSettings.OutlineColorKey:      MacDogSettings.OutlineColorDefault,
+            MacDogSettings.EyeColorKey:          MacDogSettings.EyeColorDefault,
+            MacDogSettings.MudColorKey:          MacDogSettings.MudColorDefault,
+            MacDogSettings.SoundVolumeKey:       Float(1)
         ])
         LoadColors()
 
@@ -90,19 +90,19 @@ final class MacGooseSettings: GooseConfig.ConfigSettings {
 
     private func LoadColors() {
         let d = UserDefaults.standard
-        UseCustomColors = d.bool(forKey: MacGooseSettings.UseCustomColorsKey)
+        UseCustomColors = d.bool(forKey: MacDogSettings.UseCustomColorsKey)
         if UseCustomColors {
-            GooseWhite   = MacGooseSettings.ColorFromHexString(d.string(forKey: MacGooseSettings.WhiteColorKey)   ?? MacGooseSettings.WhiteColorDefault)
-            GooseOrange  = MacGooseSettings.ColorFromHexString(d.string(forKey: MacGooseSettings.OrangeColorKey)  ?? MacGooseSettings.OrangeColorDefault)
-            GooseOutline = MacGooseSettings.ColorFromHexString(d.string(forKey: MacGooseSettings.OutlineColorKey) ?? MacGooseSettings.OutlineColorDefault)
-            GooseEye     = MacGooseSettings.ColorFromHexString(d.string(forKey: MacGooseSettings.EyeColorKey)     ?? MacGooseSettings.EyeColorDefault)
-            GooseMud     = MacGooseSettings.ColorFromHexString(d.string(forKey: MacGooseSettings.MudColorKey)     ?? MacGooseSettings.MudColorDefault)
+            DogWhite   = MacDogSettings.ColorFromHexString(d.string(forKey: MacDogSettings.WhiteColorKey)   ?? MacDogSettings.WhiteColorDefault)
+            DogOrange  = MacDogSettings.ColorFromHexString(d.string(forKey: MacDogSettings.OrangeColorKey)  ?? MacDogSettings.OrangeColorDefault)
+            DogOutline = MacDogSettings.ColorFromHexString(d.string(forKey: MacDogSettings.OutlineColorKey) ?? MacDogSettings.OutlineColorDefault)
+            DogEye     = MacDogSettings.ColorFromHexString(d.string(forKey: MacDogSettings.EyeColorKey)     ?? MacDogSettings.EyeColorDefault)
+            DogMud     = MacDogSettings.ColorFromHexString(d.string(forKey: MacDogSettings.MudColorKey)     ?? MacDogSettings.MudColorDefault)
         } else {
-            GooseWhite   = MacGooseSettings.ColorFromHexString(MacGooseSettings.WhiteColorDefault)
-            GooseOrange  = MacGooseSettings.ColorFromHexString(MacGooseSettings.OrangeColorDefault)
-            GooseOutline = MacGooseSettings.ColorFromHexString(MacGooseSettings.OutlineColorDefault)
-            GooseEye     = MacGooseSettings.ColorFromHexString(MacGooseSettings.EyeColorDefault)
-            GooseMud     = MacGooseSettings.ColorFromHexString(MacGooseSettings.MudColorDefault)
+            DogWhite   = MacDogSettings.ColorFromHexString(MacDogSettings.WhiteColorDefault)
+            DogOrange  = MacDogSettings.ColorFromHexString(MacDogSettings.OrangeColorDefault)
+            DogOutline = MacDogSettings.ColorFromHexString(MacDogSettings.OutlineColorDefault)
+            DogEye     = MacDogSettings.ColorFromHexString(MacDogSettings.EyeColorDefault)
+            DogMud     = MacDogSettings.ColorFromHexString(MacDogSettings.MudColorDefault)
         }
     }
 

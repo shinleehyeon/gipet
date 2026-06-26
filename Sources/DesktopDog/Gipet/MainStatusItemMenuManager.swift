@@ -47,7 +47,7 @@ final class MainStatusItemMenuManager: NSObject {
         }
     }
     /// Called when the user picks "Dog menu…" inside the popover.
-    var onOpenGooseMenu: (() -> Void)?
+    var onOpenDogMenu: (() -> Void)?
     /// Called when contribution stats change, so the menu-bar icon can update.
     var onStateChange: (() -> Void)?
     private var refreshTimer: Timer?
@@ -85,9 +85,9 @@ final class MainStatusItemMenuManager: NSObject {
     func configurePopover() {
         let root = ContributionView(
             model: model,
-            onOpenGooseMenu: { [weak self] in
+            onOpenDogMenu: { [weak self] in
                 self?.hide()
-                self?.onOpenGooseMenu?()
+                self?.onOpenDogMenu?()
             },
             onQuit: { NSApp.terminate(nil) })
         let host = NSHostingView(rootView: root)

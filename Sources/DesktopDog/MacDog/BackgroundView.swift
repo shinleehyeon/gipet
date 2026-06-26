@@ -1,25 +1,25 @@
-// Port of: MacGoose/BackgroundView.cs
+// Port of: MacDog/BackgroundView.cs
 
 import AppKit
 import CoreGraphics
 
 final class BackgroundView: NSView {
-    weak var goose: MacintoshGoose?
+    weak var dog: MacintoshGitDog?
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let g = NSGraphicsContext.current?.cgContext else { return }
 
         g.saveGState()
-        goose?.RenderFootmarks(g)
+        dog?.RenderFootmarks(g)
         g.restoreGState()
 
-        if let pos = goose?.clickIndicatorScreenPos {
-            let elapsed = Time.time - (goose?.clickIndicatorStartTime ?? 0)
+        if let pos = dog?.clickIndicatorScreenPos {
+            let elapsed = Time.time - (dog?.clickIndicatorStartTime ?? 0)
             if elapsed < 0.7 {
                 drawCircleIndicator(g, at: pos, elapsed: elapsed)
             } else {
-                goose?.clickIndicatorScreenPos = nil
+                dog?.clickIndicatorScreenPos = nil
             }
         }
     }

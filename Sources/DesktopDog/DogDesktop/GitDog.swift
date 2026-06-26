@@ -1,9 +1,9 @@
-// Port of: GooseDesktop/Goose.cs
+// Port of: DogDesktop/GitDog.cs
 
 import Foundation
 import CoreGraphics
 
-class Goose {
+class GitDog {
     // Manual-only collect-window mode:
     // true  -> AI task picker can choose CollectWindow_* tasks
     // false -> collect windows run only when explicitly requested (hotkey/menu)
@@ -25,7 +25,7 @@ class Goose {
         case Charge
     }
 
-    enum GooseTask: Int {
+    enum GitDogTask: Int {
         case Wander
         case NabMouse
         case CollectWindow_Meme
@@ -56,10 +56,10 @@ class Goose {
 
         static func GetRandomWanderDuration() -> Float {
             if Time.time < 1 {
-                return GooseConfig.settings.FirstWanderTimeSeconds
+                return GitDogConfig.settings.FirstWanderTimeSeconds
             }
-            return SamMath.RandomRange(GooseConfig.settings.MinWanderingTimeSeconds,
-                                       GooseConfig.settings.MaxWanderingTimeSeconds)
+            return SamMath.RandomRange(GitDogConfig.settings.MinWanderingTimeSeconds,
+                                       GitDogConfig.settings.MaxWanderingTimeSeconds)
         }
 
         static func GetRandomWalkTime() -> Float {
@@ -260,8 +260,8 @@ class Goose {
     private(set) var speechText: String? = nil
     private var speechExpireTime: Float = 0
 
-    private var currentTask: GooseTask = .Wander
-    private var pendingTask: GooseTask? = nil
+    private var currentTask: GitDogTask = .Wander
+    private var pendingTask: GitDogTask? = nil
     private var taskWanderInfo = Task_Wander()
     private var taskNabMouseInfo = Task_NabMouse()
     private var tmpRect: CGRect = .zero
@@ -276,10 +276,10 @@ class Goose {
     var onBringFriendsArrived: (() -> Void)? = nil
     var committedToday: Bool = false
 
-    // Heavily meme-biased — user wanted the goose to bring memes much more often.
+    // Heavily meme-biased — user wanted the dog to bring memes much more often.
     // CanAttackAtRandom defaults to false, so the NabMouse slots are skipped by
     // ChooseNextTask anyway and effectively re-rolled.
-    private var gooseTaskWeightedList: [GooseTask] = BehaviorSettings.shared.buildWeightedList()
+    private var dogTaskWeightedList: [GitDogTask] = BehaviorSettings.shared.buildWeightedList()
     private var taskPickerDeck: Deck = Deck(BehaviorSettings.shared.buildWeightedList().count)
 
     var lFootPos: Vector2 = .zero
@@ -295,7 +295,7 @@ class Goose {
     static let feetDistanceApart: Int = 6
     static let overshootFraction: Float = 0.4
 
-    var gooseRig = Rig()
+    var dogRig = Rig()
 
     static let ImageUrls: [String] = []
 
@@ -317,8 +317,8 @@ class Goose {
     init() {
         position = Vector2(-20, 120)
         targetPos = Vector2(100, 150)
-        if !GooseConfig.settings.CanAttackAtRandom {
-            let memeOriginalIndex = gooseTaskWeightedList.firstIndex(of: .CollectWindow_Meme) ?? 0
+        if !GitDogConfig.settings.CanAttackAtRandom {
+            let memeOriginalIndex = dogTaskWeightedList.firstIndex(of: .CollectWindow_Meme) ?? 0
             let num = taskPickerDeck.indices.firstIndex(of: memeOriginalIndex) ?? 0
             let num2 = taskPickerDeck.indices[0]
             taskPickerDeck.indices[0] = taskPickerDeck.indices[num]
@@ -469,7 +469,7 @@ class Goose {
         SolveFeet()
         _ = Vector2.Magnitude(velocity)
         let num: Float = (overrideExtendNeck || (currentSpeed >= 200)) ? 1 : 0
-        gooseRig.neckLerpPercent = SamMath.Lerp(gooseRig.neckLerpPercent, num, 0.075)
+        dogRig.neckLerpPercent = SamMath.Lerp(dogRig.neckLerpPercent, num, 0.075)
     }
 
     func GetMainWindowWidth() -> Float { fatalError("abstract") }
@@ -527,10 +527,10 @@ class Goose {
 
     private func RunNabMouse() {
         let cursorPosition = GetCursorPosition()
-        let head2EndPoint = gooseRig.head2EndPoint
+        let head2EndPoint = dogRig.head2EndPoint
         if taskNabMouseInfo.currentStage == .SeekingMouse {
             SetSpeed(.Charge)
-            targetPos = cursorPosition - (gooseRig.head2EndPoint - position)
+            targetPos = cursorPosition - (dogRig.head2EndPoint - position)
             if Vector2.Distance(head2EndPoint, cursorPosition) < 15 {
                 taskNabMouseInfo.originalVectorToMouse = cursorPosition - head2EndPoint
                 taskNabMouseInfo.grabbedOriginalTime = Time.time
@@ -618,7 +618,7 @@ class Goose {
             } else {
                 overrideExtendNeck = true
                 targetDirection = position - targetPos
-                let p = gooseRig.head2EndPoint - taskCollectWindowInfo.windowOffsetToBeak
+                let p = dogRig.head2EndPoint - taskCollectWindowInfo.windowOffsetToBeak
                 taskCollectWindowInfo.mainForm?.SetPosition(ToIntPoint(p))
             }
         }
@@ -734,7 +734,7 @@ class Goose {
     }
 
     private func ChooseNextTask() {
-        if !GooseConfig.settings.CanAttackAtRandom && Time.time < GooseConfig.settings.FirstWanderTimeSeconds + 1 {
+        if !GitDogConfig.settings.CanAttackAtRandom && Time.time < GitDogConfig.settings.FirstWanderTimeSeconds + 1 {
             // Keep startup in normal random wander; avoid forced offscreen run.
             SetTask(.Wander, honck: false)
             return
@@ -760,13 +760,13 @@ class Goose {
             nextAllowedBringFriendsTime = Time.time + 15
         }
         // Prevent hangs: if all weighted tasks are filtered out, fallback to Wander.
-        for _ in 0..<(gooseTaskWeightedList.count * 3) {
-            let gooseTask = gooseTaskWeightedList[taskPickerDeck.Next()]
-            let blockedCollect = !allowAutomaticCollectWindows && isAutomaticCollectWindowTask(gooseTask)
+        for _ in 0..<(dogTaskWeightedList.count * 3) {
+            let dogTask = dogTaskWeightedList[taskPickerDeck.Next()]
+            let blockedCollect = !allowAutomaticCollectWindows && isAutomaticCollectWindowTask(dogTask)
             if blockedCollect {
                 continue
             }
-            SetTask(gooseTask)
+            SetTask(dogTask)
             return
         }
         SetTask(.Wander, honck: false)
@@ -777,18 +777,18 @@ class Goose {
     func CreateDonateForm() -> IMovableForm { fatalError("abstract") }
 
     func GetNextNote() -> String {
-        return Goose.possiblePhrases[Goose.textIndices.Next()]
+        return GitDog.possiblePhrases[GitDog.textIndices.Next()]
     }
 
     // External callers use requestTask — it queues the task if the dog
     // is currently mid-action and applies it when Wander is re-entered.
     func rebuildBehaviorWeights() {
         let list = BehaviorSettings.shared.buildWeightedList()
-        gooseTaskWeightedList = list
+        dogTaskWeightedList = list
         taskPickerDeck = Deck(list.count)
     }
 
-    func requestTask(_ task: GooseTask) {
+    func requestTask(_ task: GitDogTask) {
         guard currentTask != .BringFriends else { return }
         guard currentTask == .Wander else {
             pendingTask = task
@@ -797,7 +797,7 @@ class Goose {
         SetTask(task, honck: false)
     }
 
-    func SetTask(_ task: GooseTask, honck: Bool = true) {
+    func SetTask(_ task: GitDogTask, honck: Bool = true) {
         if honck {
             PlaySound(.HONCC)
         }
@@ -824,7 +824,7 @@ class Goose {
             SetTask(.CollectWindow_DONOTSET, honck: false)
         case .CollectWindow_Notepad:
             taskCollectWindowInfo = Task_CollectWindow()
-            taskCollectWindowInfo.mainForm = CreateTextForm("Goose \"Not-epad\"", GetNextNote())
+            taskCollectWindowInfo.mainForm = CreateTextForm("GitDog \"Not-epad\"", GetNextNote())
             SetTask(.CollectWindow_DONOTSET, honck: false)
         case .CollectWindow_Donate:
             // Donation window feature is disabled.
@@ -889,7 +889,7 @@ class Goose {
         }
     }
 
-    private func isAutomaticCollectWindowTask(_ task: GooseTask) -> Bool {
+    private func isAutomaticCollectWindowTask(_ task: GitDogTask) -> Bool {
         task == .CollectWindow_Meme
             || task == .CollectWindow_Notepad
             || task == .CollectWindow_Donate
@@ -1006,15 +1006,15 @@ class Goose {
         let vector = Vector2(Float(Int(position.x)), Float(Int(position.y)))
         let fromAngleDegrees = Vector2.GetFromAngleDegrees(direction)
         let vector2 = Vector2(0, -1)
-        gooseRig.underbodyCenter = vector + vector2 * 9
-        gooseRig.bodyCenter = vector + vector2 * 14
-        let num  = Float(Int(SamMath.Lerp(20, 10, gooseRig.neckLerpPercent)))
-        let num2 = Float(Int(SamMath.Lerp(3, 16, gooseRig.neckLerpPercent)))
-        gooseRig.neckCenter = vector + vector2 * (14 + num)
-        gooseRig.neckBase = gooseRig.bodyCenter + fromAngleDegrees * 15
-        gooseRig.neckHeadPoint = gooseRig.neckBase + fromAngleDegrees * num2 + vector2 * num
-        gooseRig.head1EndPoint = gooseRig.neckHeadPoint + fromAngleDegrees * 3 - vector2 * 1
-        gooseRig.head2EndPoint = gooseRig.head1EndPoint + fromAngleDegrees * 5
+        dogRig.underbodyCenter = vector + vector2 * 9
+        dogRig.bodyCenter = vector + vector2 * 14
+        let num  = Float(Int(SamMath.Lerp(20, 10, dogRig.neckLerpPercent)))
+        let num2 = Float(Int(SamMath.Lerp(3, 16, dogRig.neckLerpPercent)))
+        dogRig.neckCenter = vector + vector2 * (14 + num)
+        dogRig.neckBase = dogRig.bodyCenter + fromAngleDegrees * 15
+        dogRig.neckHeadPoint = dogRig.neckBase + fromAngleDegrees * num2 + vector2 * num
+        dogRig.head1EndPoint = dogRig.neckHeadPoint + fromAngleDegrees * 3 - vector2 * 1
+        dogRig.head2EndPoint = dogRig.head1EndPoint + fromAngleDegrees * 5
     }
 
     func ToIntPoint(_ vector: Vector2) -> CGPoint {

@@ -1,8 +1,8 @@
-// Port of: GooseDesktop/GooseConfig.cs
+// Port of: DogDesktop/GitDogConfig.cs
 
 import Foundation
 
-public enum GooseConfig {
+public enum GitDogConfig {
     public class ConfigSettings {
         var Version: Int = 0
 
@@ -83,7 +83,7 @@ public enum GooseConfig {
         }
     }
 
-    public static let GOOSE_CONFIG_VERSION: Int = 0
+    public static let DOG_CONFIG_VERSION: Int = 0
 
     public static var settings: ConfigSettings = ConfigSettings()
 
