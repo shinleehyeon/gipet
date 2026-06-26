@@ -59,7 +59,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         installStatusItem()
         installGipet()
         applyCharacterChoice()
-        installGlobalHotkey()
         installRightClickMove()
         installFriendDogHook()
     }
@@ -89,10 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.lastJoke = joke
             self?.Goose?.Say(joke, duration: 6)
         }
-        // "Dog menu…" inside the popover pops the classic goose menu at the cursor.
-        gipet.onOpenGooseMenu = { [weak self] in
-            self?.popupGooseMenuAtCursor()
-        }
+
         // Stats changed → refresh the menu-bar icon (mood + streak).
         gipet.onStateChange = { [weak self] in
             self?.refreshTitle()
@@ -115,21 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func installGlobalHotkey() {
-        let cmdCtrl = UInt32(cmdKey | controlKey)
-        // kVK_ANSI_G = 5  → Cmd+Ctrl+G   → pop the menu near the cursor
-        // kVK_ANSI_M = 46 → Cmd+Ctrl+M   → force the goose to fetch a meme right now
-        // kVK_ANSI_B = 11 → Cmd+Ctrl+B   → force the goose to fetch a note right now
-        HotkeyManager.shared.register(keyCode: 5,  modifiers: cmdCtrl) { [weak self] in
-            self?.popupGooseMenuAtCursor()
-        }
-        HotkeyManager.shared.register(keyCode: 46, modifiers: cmdCtrl) { [weak self] in
-            self?.Goose?.requestTask(.CollectWindow_Meme)
-        }
-        HotkeyManager.shared.register(keyCode: 11, modifiers: cmdCtrl) { [weak self] in
-            self?.Goose?.requestTask(.CollectWindow_Notepad)
-        }
-    }
+
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         ShowPreferences()
@@ -205,18 +187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         menu.addItem(.separator())
         menu.addItem(withTitle: "말풍선 💬",   action: #selector(menuSpeak),      keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Honk",       action: #selector(menuHonk),       keyEquivalent: "h").target = self
         menu.addItem(withTitle: "Nab Mouse",  action: #selector(menuNabMouse),   keyEquivalent: "n").target = self
-        menu.addItem(withTitle: "Wander",     action: #selector(menuWander),     keyEquivalent: "w").target = self
         menu.addItem(withTitle: "Heart Trail", action: #selector(menuHeartTrail), keyEquivalent: "")
             .target = self
-        menu.addItem(withTitle: "Track Mud",  action: #selector(menuTrackMud),   keyEquivalent: "m").target = self
         menu.addItem(withTitle: "친구 데려오기",  action: #selector(menuBringFriends), keyEquivalent: "f").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Open Memes", action: #selector(openMemesFolder(_:)), keyEquivalent: "")
-            .target = self
-        menu.addItem(withTitle: "Open Notes", action: #selector(openNotesFolder(_:)), keyEquivalent: "")
-            .target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit",       action: #selector(menuQuit), keyEquivalent: "q").target = self
         // Left-click opens the Gipet popover; right-click shows the goose menu.
@@ -351,25 +325,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func refreshTitle() {
+        guard let button = statusItem?.button else { return }
         let vm = GipetViewModel.shared
-        if vm.isSignedIn, !vm.days.isEmpty, let button = statusItem?.button {
-            let isDark = button.effectiveAppearance
-                .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let isDark = button.effectiveAppearance
+            .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        if vm.isSignedIn, !vm.days.isEmpty {
             button.image = statusBarImage(levels: recent7Levels(vm),
                                           count: vm.stats.todayCount,
                                           committed: vm.stats.committedToday,
                                           isDark: isDark)
-            button.imagePosition = .imageOnly
-            button.title = ""
-        } else if let button = statusItem?.button {
-            // Logged out → the same pill, but empty (gray bars, neutral dot, no number).
-            let isDark = button.effectiveAppearance
-                .bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        } else {
             button.image = statusBarImage(levels: Array(repeating: 0, count: 7),
                                           count: nil, committed: false, isDark: isDark)
-            button.imagePosition = .imageOnly
-            button.title = ""
         }
+        button.imagePosition = .imageOnly
+        button.title = ""
         gooseMenu?.items.forEach { mi in
             if let raw = mi.representedObject as? String,
                let kind = CharacterKind(rawValue: raw) {

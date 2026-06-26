@@ -7,7 +7,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-APP="$ROOT/Gipet.app"
+APP="$ROOT/깃독.app"
 CONTENTS="$APP/Contents"
 MACOS="$CONTENTS/MacOS"
 RES="$CONTENTS/Resources"
@@ -24,6 +24,7 @@ echo "▸ Assembling $APP …"
 rm -rf "$APP"
 mkdir -p "$MACOS" "$RES"
 cp "$BIN" "$MACOS/$EXE_NAME"
+cp "$ROOT/Sources/DesktopGoose/Resources/AppIcon.icns" "$RES/AppIcon.icns"
 chmod +x "$MACOS/$EXE_NAME"
 
 cat > "$CONTENTS/Info.plist" <<PLIST
@@ -31,8 +32,8 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>            <string>Gipet</string>
-    <key>CFBundleDisplayName</key>     <string>Gipet</string>
+    <key>CFBundleName</key>            <string>깃독</string>
+    <key>CFBundleDisplayName</key>     <string>깃독</string>
     <key>CFBundleExecutable</key>      <string>$EXE_NAME</string>
     <key>CFBundleIdentifier</key>      <string>$BUNDLE_ID</string>
     <key>CFBundleVersion</key>         <string>1</string>
@@ -40,6 +41,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <key>CFBundlePackageType</key>     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>  <string>13.0</string>
     <!-- Menu-bar accessory: no Dock icon. -->
+    <key>CFBundleIconFile</key>        <string>AppIcon</string>
     <key>LSUIElement</key>             <true/>
     <!-- Register the gipet:// scheme for the GitHub OAuth callback. -->
     <key>CFBundleURLTypes</key>
@@ -53,6 +55,21 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+BUILD_DIR="$ROOT/.build/arm64-apple-macosx/release"
+
+# Bundle Lottie.framework (and any other SPM frameworks)
+FRAMEWORKS="$CONTENTS/Frameworks"
+mkdir -p "$FRAMEWORKS"
+for fw in "$BUILD_DIR"/*.framework; do
+    [ -d "$fw" ] && cp -R "$fw" "$FRAMEWORKS/"
+done
+install_name_tool -add_rpath "@loader_path/../Frameworks" "$MACOS/$EXE_NAME" 2>/dev/null || true
+
+# Copy SPM resource bundles (dog_animation.json, Memes, Notes, etc.)
+for bundle in "$BUILD_DIR"/*.bundle; do
+    [ -d "$bundle" ] && cp -R "$bundle" "$RES/"
+done
 
 echo "▸ Ad-hoc code signing…"
 codesign --force --deep --sign - "$APP" 2>/dev/null || echo "  (codesign skipped)"
@@ -70,5 +87,5 @@ if [ "${1:-}" = "--run" ]; then
     # code changes won't load. Kill first, then force a new app instance.
     pkill -f "$APP/Contents/MacOS/$EXE_NAME" 2>/dev/null || true
     sleep 0.3
-    open -n "$APP"
+    open "$APP"
 fi

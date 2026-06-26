@@ -128,8 +128,7 @@ struct ContributionView: View {
                     .foregroundColor(GipetTheme.inkSoft)
             }
             Menu {
-                Button("Dog menu…", action: onOpenGooseMenu)
-                Button("Sign out") { model.signOut() }
+Button("Sign out") { model.signOut() }
                 Divider()
                 Button("Quit", action: onQuit)
             } label: {
@@ -144,31 +143,36 @@ struct ContributionView: View {
     // MARK: signed-out
 
     private var signedOut: some View {
-        VStack(spacing: 18) {
-            Text("Gipet").font(.system(size: 22, weight: .bold)).foregroundColor(GipetTheme.ink)
+        VStack(spacing: 0) {
+            Text("깃독")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(GipetTheme.ink)
+                .padding(.top, 28)
+                .padding(.bottom, 18)
 
-            VStack(spacing: 14) {
-                LoginBubble(text: "Github 계정으로 로그인")
-                Button(action: { model.signIn() }) {
-                    ZStack {
-                        Circle().fill(Color.black)
-                        GitHubMark(color: .white).frame(width: 56, height: 56)
-                    }
-                    .frame(width: 104, height: 104)
-                }
-                .buttonStyle(.plain)
+            LoginBubble(text: "Github 계정으로 로그인")
+
+            // Dog canvas is 750×1334 — at scaleAspectFit 200×200 the top ~55pt
+            // is empty. Crop it by anchoring content to bottom and clipping.ㄹ
+            LottieLoginButton(action: { model.signIn() })
+                .frame(width: 200, height: 200, alignment: .bottom)
+                .frame(height: 150)
+                .clipped()
                 .help("GitHub 계정으로 로그인 (OAuth)")
-            }
-            .padding(.vertical, 6)
 
             if let err = model.errorText {
-                Text(err).font(.system(size: 10)).foregroundColor(.red).lineLimit(3)
+                Text(err)
+                    .font(.system(size: 10)).foregroundColor(.red).lineLimit(3)
                     .multilineTextAlignment(.center)
+                    .padding(.top, 10)
             }
+
             Button("Quit", action: onQuit)
                 .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
         }
-        .padding(28)
+        .frame(width: 360)
     }
 }
 

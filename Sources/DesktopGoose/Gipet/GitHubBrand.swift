@@ -52,7 +52,6 @@ struct LoginBubble: View {
     let text: String
     var body: some View {
         HStack(spacing: 7) {
-            Text("🐙")
             Text(text).font(.system(size: 14, weight: .bold)).foregroundColor(.white)
         }
         .padding(.horizontal, 16).padding(.vertical, 11)

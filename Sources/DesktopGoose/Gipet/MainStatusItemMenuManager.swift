@@ -54,6 +54,8 @@ final class MainStatusItemMenuManager: NSObject {
     private var nudgeTimer: Timer?
     private var sayTimer: Timer?
     private var jokeTimer: Timer?
+    private var lastNudgeDate: Date = .distantPast
+    private let nudgeCooldown: TimeInterval = 60
 
     // While the machine is asleep / display off / screen locked we don't nag.
     private var isAsleep = false
@@ -73,12 +75,12 @@ final class MainStatusItemMenuManager: NSObject {
         // requests mean unchanged polls cost a cheap 304. Below ~30 s risks
         // GitHub's secondary/abuse rate limit (429 + temporary IP block).
     }
-    // nudge the dog every few min while today's square is still empty.
-    private let nudgeInterval: TimeInterval = 180
-    // The "커밋해!" reminder bubble nags more often than the fetch nudge.
-    private let sayInterval: TimeInterval = 60
+    // nudge the dog every 15 min while today's square is still empty.
+    private let nudgeInterval: TimeInterval = 900
+    // The "커밋해!" reminder bubble — every 5 min.
+    private let sayInterval: TimeInterval = 300
     // How often the dog tells a random dad joke for fun.
-    private let jokeInterval: TimeInterval = 120
+    private let jokeInterval: TimeInterval = 600
 
     func configurePopover() {
         let root = ContributionView(
@@ -240,6 +242,9 @@ final class MainStatusItemMenuManager: NSObject {
         }
         let shouldFetch = invert ? committed : !committed
         if shouldFetch {
+            let now = Date()
+            guard now.timeIntervalSince(lastNudgeDate) >= nudgeCooldown else { return }
+            lastNudgeDate = now
             NSLog("[Gipet] trigger (invert=\(invert), committedToday=\(committed)) → dog fetches an image")
             onNoCommitNudge?()
         }
