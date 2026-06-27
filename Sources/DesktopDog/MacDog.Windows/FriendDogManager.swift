@@ -11,8 +11,13 @@ final class FriendDogManager {
     private var friends: [FriendDog] = []
 
     private static let exitLines: [[String]] = [
-        ["에휴\n가야지 ㅉㅉ", "ㅋㅋ 가자 ㅉㅉ", "나 간다\n잘 있어 ㅉㅉ", "에휴 ㅉㅉ.."],
-        ["ㅋㅋ 나도\n가야겠다 ㅉㅉ", "ㅉㅉ", "ㅋ 잘있어 ㅉㅉ", "에휴 참..ㅉㅉ"],
+        ["ㅉㅉ 간다"],
+        ["에휴 간다"],
+    ]
+
+    private static let wanderLines: [[String]] = [
+        ["야 코딩좀\n해라 제발"],
+        ["잔디 텅텅\n비어있어 커밋해"],
     ]
 
     private enum SpawnEdge { case left, right, top }
@@ -87,9 +92,9 @@ final class FriendDogManager {
     func startDialogue() {
         guard friends.count >= 2 else { return }
         for (i, f) in friends.enumerated() {
-            let delay = 2.0 + Double(i) * 0.8
+            let delay = 1.0 + Double(i) * 0.5
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                self?.wanderThenExit(f, wandersRemaining: 3, index: i)
+                self?.wanderThenExit(f, wandersRemaining: 1, index: i)
             }
         }
     }
@@ -107,8 +112,18 @@ final class FriendDogManager {
         let tx = Float.random(in: margin...(w - margin))
         let ty = Float.random(in: margin...(h - margin))
         f.dog.currentSpeed = 80
-        f.dog.walkTo(Vector2(tx, ty)) { [weak self] in
-            let pause = Double.random(in: 0.8...2.0)
+        let target = Vector2(tx, ty)
+        let dist = Vector2.Distance(f.dog.position, target)
+        let halfwayDelay = Double(dist / 2.0 / f.dog.currentSpeed)
+        if halfwayDelay >= 1.5 {
+            let safeIndex = min(index, Self.wanderLines.count - 1)
+            let line = Self.wanderLines[safeIndex].randomElement()!
+            DispatchQueue.main.asyncAfter(deadline: .now() + halfwayDelay) { [weak f] in
+                f?.dog.Say(line, duration: 3.0)
+            }
+        }
+        f.dog.walkTo(target) { [weak self] in
+            let pause = Double.random(in: 0.5...1.2)
             DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
                 self?.wanderThenExit(f, wandersRemaining: wandersRemaining - 1, index: index)
             }
