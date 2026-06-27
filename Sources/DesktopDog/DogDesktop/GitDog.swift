@@ -271,7 +271,7 @@ class GitDog {
     private var taskHeartTrailInfo = Task_HeartTrail()
     private var nextAllowedNabMouseTime: Float = 0
     private var taskBringFriendsInfo = Task_BringFriends()
-    private var nextAllowedBringFriendsTime: Float = 30
+    private var nextAllowedBringFriendsTime: Float = 120
     var onBringFriendsReturning: (() -> Void)? = nil
     var onBringFriendsArrived: (() -> Void)? = nil
     var committedToday: Bool = false
@@ -753,11 +753,11 @@ class GitDog {
         if friendsWeight > 0 && !committedToday && Time.time >= nextAllowedBringFriendsTime {
             let friendsProb = Float(friendsWeight) * 0.04  // 0.04 … 0.20
             if SamMath.RandomRange(0, 1) < friendsProb {
-                nextAllowedBringFriendsTime = Time.time + SamMath.RandomRange(90, 150)
+                nextAllowedBringFriendsTime = Time.time + 120
                 SetTask(.BringFriends, honck: false)
                 return
             }
-            nextAllowedBringFriendsTime = Time.time + 15
+            nextAllowedBringFriendsTime = Time.time + 120
         }
         // Prevent hangs: if all weighted tasks are filtered out, fallback to Wander.
         for _ in 0..<(dogTaskWeightedList.count * 3) {

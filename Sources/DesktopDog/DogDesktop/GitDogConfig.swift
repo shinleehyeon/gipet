@@ -13,9 +13,9 @@ public enum GitDogConfig {
         @objc dynamic var FrameRate: Float { get { _frameRate } set { _frameRate = newValue } }
 
         var _canAttackAtRandom: Bool = false
-        var _minWanderingTimeSeconds: Float = 20
-        var _maxWanderingTimeSeconds: Float = 40
-        var _firstWanderTimeSeconds: Float = 20
+        var _minWanderingTimeSeconds: Float = 120
+        var _maxWanderingTimeSeconds: Float = 120
+        var _firstWanderTimeSeconds: Float = 120
         var _frameRate: Float = 60
 
         static func ReadFileIntoConfig(_ configGivenPath: String) -> ConfigSettings {

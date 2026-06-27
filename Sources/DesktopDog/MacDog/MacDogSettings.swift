@@ -61,9 +61,9 @@ final class MacDogSettings: GitDogConfig.ConfigSettings {
         d.register(defaults: [
             MacDogSettings.CanAttackAtRandomKey: false,
             // User-tuned: bring memes more often → shorter wander interludes.
-            MacDogSettings.MinWanderingTimeKey:  Float(4),
-            MacDogSettings.MaxWanderingTimeKey:  Float(10),
-            MacDogSettings.FirstWanderTimeKey:   Float(3),
+            MacDogSettings.MinWanderingTimeKey:  Float(120),
+            MacDogSettings.MaxWanderingTimeKey:  Float(120),
+            MacDogSettings.FirstWanderTimeKey:   Float(120),
             MacDogSettings.FrameRateKey:         Float(60),
             MacDogSettings.UseCustomColorsKey:   false,
             MacDogSettings.WhiteColorKey:        MacDogSettings.WhiteColorDefault,
