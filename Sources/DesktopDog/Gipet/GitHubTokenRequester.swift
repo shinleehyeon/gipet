@@ -15,6 +15,7 @@
 
 import Foundation
 import AppKit
+import AuthenticationServices
 
 enum GipetGitHub {
     static let clientID     = GipetSecrets.githubClientID
@@ -86,20 +87,18 @@ struct AccessTokenResponse: Decodable {
     let error_description: String?
 }
 
-/// Drives the OAuth web flow and receives the deeplink callback.
-final class GitHubTokenRequester {
+/// Drives the OAuth web flow using ASWebAuthenticationSession (required by App Review guideline 4.0).
+final class GitHubTokenRequester: NSObject {
     static let shared = GitHubTokenRequester()
 
-    private var continuation: CheckedContinuation<String, Error>?
+    private var authSession: ASWebAuthenticationSession?
     private var state: String = ""
 
-    /// Begin login: open the browser. Resolves with the access token once the
-    /// deeplink callback arrives and the code is exchanged.
+    @MainActor
     func signIn() async throws -> String {
         guard GipetGitHub.isConfigured else {
             throw APIError.decode("OAuth not configured — set GipetGitHub.clientID/clientSecret")
         }
-        // A non-cryptographic anti-CSRF nonce derived from process+time inputs.
         state = "gipet-\(ProcessInfo.processInfo.globallyUniqueString.prefix(12))"
 
         var comps = URLComponents(string: "https://github.com/login/oauth/authorize")!
@@ -111,63 +110,77 @@ final class GitHubTokenRequester {
         ]
         guard let url = comps.url else { throw APIError.badURL }
 
-        return try await withCheckedThrowingContinuation { cont in
-            self.continuation = cont
-            NSWorkspace.shared.open(url)
+        let callbackURL: URL = try await withCheckedThrowingContinuation { cont in
+            let session = ASWebAuthenticationSession(
+                url: url,
+                callbackURLScheme: GipetGitHub.callbackScheme
+            ) { [weak self] callbackURL, error in
+                self?.authSession = nil
+                if let error = error {
+                    cont.resume(throwing: error)
+                } else if let url = callbackURL {
+                    cont.resume(returning: url)
+                } else {
+                    cont.resume(throwing: APIError.decode("No callback URL received"))
+                }
+            }
+            session.presentationContextProvider = self
+            session.prefersEphemeralWebBrowserSession = false
+            self.authSession = session
+            session.start()
         }
-    }
 
-    /// Called by AppDeeplinkHandler / application(open:) when
-    /// `gipet://callback?...` is opened.
-    func handleCallback(_ url: URL) {
-        NSLog("[Gipet] callback received: \(url.absoluteString)")
-        guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-        let items = comps.queryItems ?? []
-        guard let code = items.first(where: { $0.name == "code" })?.value else {
-            NSLog("[Gipet] callback missing code")
-            continuation?.resume(throwing: APIError.decode("oauth callback missing code"))
-            continuation = nil
-            return
+        guard let cbComps = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+              let code = cbComps.queryItems?.first(where: { $0.name == "code" })?.value else {
+            throw APIError.decode("oauth callback missing code")
         }
-        // State is a CSRF nonce. We log a mismatch but don't hard-fail: on a
-        // freshly-launched instance handling the URL, `state` is empty, yet we
-        // still want to complete the exchange so the user isn't stuck.
-        let returnedState = items.first(where: { $0.name == "state" })?.value
+        let returnedState = cbComps.queryItems?.first(where: { $0.name == "state" })?.value
         if !state.isEmpty, returnedState != state {
             NSLog("[Gipet] oauth state mismatch (expected \(state), got \(returnedState ?? "nil"))")
         }
-        Task { await exchange(code: code) }
+
+        return try await exchange(code: code)
     }
 
-    private func exchange(code: String) async {
-        do {
-            guard let url = URL(string: "https://github.com/login/oauth/access_token") else {
-                throw APIError.badURL
-            }
-            let resp = try await APIClient.shared.post(AccessTokenResponse.self, url, form: [
-                "client_id": GipetGitHub.clientID,
-                "client_secret": GipetGitHub.clientSecret,
-                "code": code,
-                "redirect_uri": GipetGitHub.redirectURI,
-                "state": state,
-            ])
-            guard let token = resp.access_token, !token.isEmpty else {
-                throw APIError.decode(resp.error_description ?? resp.error ?? "no access_token")
-            }
-            NSLog("[Gipet] token exchange ok")
-            TokenStore.shared.token = token
-            continuation?.resume(returning: token)
-            // Update the UI even if no signIn() continuation is pending
-            // (e.g. a freshly-launched instance handled the callback).
-            await MainActor.run {
-                GipetViewModel.shared.objectWillChange.send()
-                GipetViewModel.shared.refresh()
-            }
-        } catch {
-            NSLog("[Gipet] token exchange failed: \(error)")
-            continuation?.resume(throwing: error)
+    /// Fallback: called by AppDeeplinkHandler if the app is relaunched with a pending callback URL.
+    func handleCallback(_ url: URL) {
+        NSLog("[Gipet] deeplink callback received: \(url.absoluteString)")
+        guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let code = comps.queryItems?.first(where: { $0.name == "code" })?.value else {
+            NSLog("[Gipet] callback missing code")
+            return
         }
-        continuation = nil
+        Task { try? await exchange(code: code) }
+    }
+
+    @discardableResult
+    private func exchange(code: String) async throws -> String {
+        guard let url = URL(string: "https://github.com/login/oauth/access_token") else {
+            throw APIError.badURL
+        }
+        let resp = try await APIClient.shared.post(AccessTokenResponse.self, url, form: [
+            "client_id": GipetGitHub.clientID,
+            "client_secret": GipetGitHub.clientSecret,
+            "code": code,
+            "redirect_uri": GipetGitHub.redirectURI,
+            "state": state,
+        ])
+        guard let token = resp.access_token, !token.isEmpty else {
+            throw APIError.decode(resp.error_description ?? resp.error ?? "no access_token")
+        }
+        NSLog("[Gipet] token exchange ok")
+        TokenStore.shared.token = token
+        await MainActor.run {
+            GipetViewModel.shared.objectWillChange.send()
+            GipetViewModel.shared.refresh()
+        }
+        return token
+    }
+}
+
+extension GitHubTokenRequester: ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
     }
 }
 

@@ -113,7 +113,7 @@ final class MacintoshGitDog: GitDog {
         dogView = view
     }
 
-    func swapCharacter(to kind: CharacterKind) {
+func swapCharacter(to kind: CharacterKind) {
         guard let bg = Window.contentView else { return }
         installCharacterView(for: kind, into: bg)
     }

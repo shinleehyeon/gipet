@@ -667,6 +667,8 @@ class GitDog {
             if Vector2.Distance(position, taskHeartTrailInfo.startPoint) <= 20 {
                 taskHeartTrailInfo.isTracing = true
                 taskHeartTrailInfo.startTime = Time.time
+                let commitLines = ["커밋 ㅊㅊ", "오 커밋했네\nㄷㄷ", "잔디\n심었다ㅋ", "커밋\n했구만ㅋ"]
+                Say(commitLines.randomElement()!, duration: 3.0)
                 targetPos = heartPoint(progress: 0, center: taskHeartTrailInfo.center,
                                        xScale: taskHeartTrailInfo.xScale, yScale: taskHeartTrailInfo.yScale)
             }
