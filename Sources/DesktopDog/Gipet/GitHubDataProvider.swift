@@ -58,6 +58,27 @@ final class GitHubDataProvider {
                 return d
             }
         }
+
+        // Overlay today's count from GraphQL (authenticated, not CDN-cached)
+        // so private repo commits are reflected immediately.
+        let htmlTodayCount = days.first(where: { Calendar.current.isDateInToday($0.date) })?.count ?? 0
+        do {
+            let eventsCount = try await fetchTodayPushCount(login: login)
+            let graphqlDays = try await fetchViaGraphQL()
+            let cal = Calendar.current
+            let graphqlTodayCount = graphqlDays.first(where: { cal.isDateInToday($0.date) })?.count ?? 0
+            let bestCount = max(htmlTodayCount, eventsCount, graphqlTodayCount)
+            NSLog("[Gipet] today: html=%d events=%d graphql=%d", htmlTodayCount, eventsCount, graphqlTodayCount)
+            if bestCount > htmlTodayCount {
+                days = days.map { d in
+                    guard cal.isDateInToday(d.date) else { return d }
+                    return ContributionDay(date: d.date, count: bestCount, level: max(d.level, 1))
+                }
+            }
+        } catch {
+            NSLog("[Gipet] today overlay error: %@", error.localizedDescription)
+        }
+
         return days
     }
 
@@ -73,6 +94,36 @@ final class GitHubDataProvider {
         return f
     }()
     private static func dayKey(_ date: Date) -> String { keyFormatter.string(from: date) }
+
+    // MARK: - Events API (private commit detection)
+
+    private struct GitHubEvent: Decodable {
+        let type: String
+        let created_at: String
+        struct Payload: Decodable { let size: Int? }
+        let payload: Payload?
+    }
+
+    /// Count commits pushed today (local time) via the authenticated Events API.
+    /// Catches private repo commits that anonymous HTML scraping misses.
+    /// Returns 0 if no token or if the call fails.
+    func fetchTodayPushCount(login: String) async throws -> Int {
+        guard api.accessToken != nil else { return 0 }
+        guard let url = URL(string: "https://api.github.com/users/\(login)/events?per_page=100") else {
+            throw APIError.badURL
+        }
+        let events = try await api.json([GitHubEvent].self, url, authorized: true)
+        let cal = Calendar.current
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        return events
+            .filter { $0.type == "PushEvent" }
+            .filter { e in
+                guard let date = iso.date(from: e.created_at) else { return false }
+                return cal.isDateInToday(date)
+            }
+            .reduce(0) { $0 + ($1.payload?.size ?? 0) }
+    }
 
     private func fetchViaHTML(login: String, year: Int) async throws -> [ContributionDay] {
         let path = "https://github.com/users/\(login)/contributions?from=\(year)-01-01&to=\(year)-12-31"
@@ -109,7 +160,7 @@ final class GitHubDataProvider {
         let data: DataField
     }
 
-    private func fetchViaGraphQL() async throws -> [ContributionDay] {
+    func fetchViaGraphQL() async throws -> [ContributionDay] {
         guard let token = api.accessToken else { throw APIError.decode("no token") }
         guard let url = URL(string: "https://api.github.com/graphql") else { throw APIError.badURL }
         let query = "query{viewer{contributionsCollection{contributionCalendar{weeks{contributionDays{date contributionCount contributionLevel}}}}}}"

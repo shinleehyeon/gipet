@@ -22,6 +22,9 @@ let package = Package(
                 .copy("Resources/Notes"),
                 .copy("Resources/dog_animation.json"),
                 .copy("Resources/dog_click.json"),
+            ],
+            linkerSettings: [
+                .linkedFramework("AuthenticationServices"),
             ]
         ),
     ]

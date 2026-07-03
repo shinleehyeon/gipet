@@ -20,7 +20,7 @@ import AuthenticationServices
 enum GipetGitHub {
     static let clientID     = GipetSecrets.githubClientID
     static let clientSecret = GipetSecrets.githubClientSecret
-    static let scope        = "read:user"
+    static let scope        = "read:user,repo"
     static let callbackScheme = "gipet"
     static let redirectURI  = "gipet://callback"
 
