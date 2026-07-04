@@ -142,6 +142,9 @@ Button("Sign out") { model.signOut() }
 
     // MARK: signed-out
 
+    @State private var patInput: String = ""
+    @State private var showPATField: Bool = false
+
     private var signedOut: some View {
         VStack(spacing: 0) {
             Text("깃독")
@@ -167,12 +170,47 @@ Button("Sign out") { model.signOut() }
                     .padding(.top, 10)
             }
 
+            // PAT direct input (for reviewers / users who prefer token auth)
+            if showPATField {
+                HStack(spacing: 6) {
+                    TextField("GitHub Personal Access Token", text: $patInput)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11))
+                        .onSubmit { submitPAT() }
+                    Button("붙여넣기") {
+                        if let str = NSPasteboard.general.string(forType: .string) {
+                            patInput = str
+                        }
+                    }
+                    .font(.system(size: 11))
+                    Button("확인") { submitPAT() }
+                        .font(.system(size: 11))
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+            }
+
+            Button(showPATField ? "취소" : "토큰으로 로그인") {
+                showPATField.toggle()
+                patInput = ""
+            }
+            .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
+            .padding(.top, 10)
+
             Button("Quit", action: onQuit)
                 .font(.system(size: 11)).foregroundColor(GipetTheme.inkSoft)
-                .padding(.top, 16)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
         }
         .frame(width: 360)
+    }
+
+    private func submitPAT() {
+        let t = patInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        model.useToken(t)
+        showPATField = false
+        patInput = ""
     }
 }
 

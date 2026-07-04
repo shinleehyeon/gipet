@@ -1,5 +1,32 @@
 # Gipet
 
+## Support
+
+**Need help? Contact us:**
+- Email: sgolilla1@naver.com
+- GitHub Issues: https://github.com/shinleehyeon/gipet/issues
+
+**Frequently Asked Questions**
+
+**Q: How do I sign in?**  
+A: Click the menu bar icon → Sign in with GitHub. You can also paste a Personal Access Token (PAT) directly in the token field.
+
+**Q: The dog went off screen — is that normal?**  
+A: Yes! The dog occasionally wanders off-screen and comes back. It's intentional behavior.
+
+**Q: My commit count shows 0 after refreshing.**  
+A: This can happen due to GitHub's CDN cache. Wait a minute and refresh again.
+
+**Q: How do I add a repository to watch?**  
+A: Click the menu bar icon → "Add Folder" → select your git repository folder.
+
+**Q: The app requires permission to access files. Why?**  
+A: Gipet needs access to your git repositories to detect uncommitted changes and perform auto-commits.
+
+For additional help, please open an issue on GitHub or send an email.
+
+---
+
 맥 메뉴바에서 돌아다니는 `Desktop Goose` 스타일 펫 앱입니다.  
 거위/닥스훈트 캐릭터를 선택할 수 있고, 밈/노트 창을 물어오는 장난스러운 인터랙션을 제공합니다.
 
