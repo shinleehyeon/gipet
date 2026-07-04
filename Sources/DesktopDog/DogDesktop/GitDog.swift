@@ -306,6 +306,10 @@ class GitDog {
     var lockedTarget: Vector2? = nil
     var onLockedTargetArrival: (() -> Void)? = nil
 
+    // Curved wander: an intermediate arc waypoint offset perpendicularly from the
+    // direct path. Set by beginWanderLeg() ~30% of the time; cleared on arrival.
+    private var wanderArcWaypoint: Vector2? = nil
+
     // Walk directly to a destination, bypassing the Wander AI. Fires completion on arrival.
     func walkTo(_ dest: Vector2, onArrival: (() -> Void)? = nil) {
         lockedTarget = dest
@@ -497,14 +501,25 @@ class GitDog {
             } else {
                 velocity = .zero
             }
-        } else if Vector2.Distance(position, targetPos) < 20 {
-            // Take a rest fairly often so the dog idles a good amount between
-            // its wander legs.
-            if SamMath.RandomRange(0, 1) < 0.6 {
-                taskWanderInfo.pauseStartTime = Time.time
-                taskWanderInfo.pauseDuration = Task_Wander.GetRandomPauseDuration()
-            } else {
-                beginWanderLeg()
+        } else {
+            // If there's an arc waypoint, head there first; clear it on arrival.
+            if let wp = wanderArcWaypoint {
+                if Vector2.Distance(position, wp) < 20 {
+                    wanderArcWaypoint = nil
+                } else {
+                    targetPos = wp
+                    return
+                }
+            }
+            if Vector2.Distance(position, targetPos) < 20 {
+                // Take a rest fairly often so the dog idles a good amount between
+                // its wander legs.
+                if SamMath.RandomRange(0, 1) < 0.6 {
+                    taskWanderInfo.pauseStartTime = Time.time
+                    taskWanderInfo.pauseDuration = Task_Wander.GetRandomPauseDuration()
+                } else {
+                    beginWanderLeg()
+                }
             }
         }
     }
@@ -518,6 +533,23 @@ class GitDog {
                             SamMath.RandomRange(0, GetMainWindowHeight()))
         if Vector2.Distance(position, targetPos) > num {
             targetPos = position + Vector2.Normalize(targetPos - position) * num
+        }
+
+        // ~30% chance: add a perpendicular arc waypoint so the dog curves
+        // rather than walking in a straight line.
+        wanderArcWaypoint = nil
+        if SamMath.RandomRange(0, 1) < 0.3 {
+            let direct = Vector2.Normalize(targetPos - position)
+            let perp = Vector2(-direct.y, direct.x)
+            let side: Float = SamMath.RandomRange(0, 1) < 0.5 ? 1 : -1
+            let dist = SamMath.RandomRange(60, 160) * side
+            let mid = (position + targetPos) * 0.5
+            let wp = mid + perp * dist
+            // Only use the waypoint if it stays on screen.
+            let w = GetMainWindowWidth(); let h = GetMainWindowHeight()
+            if wp.x > 0 && wp.x < w && wp.y > 0 && wp.y < h {
+                wanderArcWaypoint = wp
+            }
         }
     }
 
