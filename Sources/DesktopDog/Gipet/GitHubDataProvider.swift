@@ -70,9 +70,16 @@ final class GitHubDataProvider {
             let bestCount = max(htmlTodayCount, eventsCount, graphqlTodayCount)
             NSLog("[Gipet] today: html=%d events=%d graphql=%d", htmlTodayCount, eventsCount, graphqlTodayCount)
             if bestCount > htmlTodayCount {
+                var foundToday = false
                 days = days.map { d in
                     guard cal.isDateInToday(d.date) else { return d }
+                    foundToday = true
                     return ContributionDay(date: d.date, count: bestCount, level: max(d.level, 1))
+                }
+                // Today's entry may be absent from the HTML calendar (CDN lag / new day).
+                if !foundToday {
+                    days.append(ContributionDay(date: Date(), count: bestCount, level: min(bestCount, 4)))
+                    days.sort { $0.date < $1.date }
                 }
             }
         } catch {

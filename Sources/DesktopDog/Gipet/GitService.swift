@@ -1,95 +1,138 @@
-// Gipet — runs git for the watched-folder one-click commit feature.
+// Gipet — sandbox-safe git service using SwiftGitX (libgit2) for local operations.
+// Push uses a temporary remote with an embedded OAuth token in the URL, avoiding
+// the need to import libgit2 directly (which breaks Xcode's package resolver).
 
 import Foundation
+import SwiftGitX
+
+// MARK: - Result type
 
 struct GitResult {
     let ok: Bool
     let output: String
 }
 
-enum GitService {
-    /// Run a git subcommand inside `repo` and capture combined output.
-    @discardableResult
-    static func run(_ args: [String], in repo: String) -> GitResult {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        proc.arguments = args
-        proc.currentDirectoryURL = URL(fileURLWithPath: repo, isDirectory: true)
-        // Keep git non-interactive (never prompt for credentials/editor).
-        var env = ProcessInfo.processInfo.environment
-        env["GIT_TERMINAL_PROMPT"] = "0"
-        env["GIT_OPTIONAL_LOCKS"] = "0"
-        proc.environment = env
+// MARK: - GitService
 
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = pipe
-        do {
-            try proc.run()
-        } catch {
-            return GitResult(ok: false, output: "failed to launch git: \(error)")
-        }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        proc.waitUntilExit()
-        let out = String(data: data, encoding: .utf8) ?? ""
-        return GitResult(ok: proc.terminationStatus == 0, output: out.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
+enum GitService {
+
+    // MARK: - Helpers
 
     static func isGitRepo(_ path: String) -> Bool {
-        run(["rev-parse", "--is-inside-work-tree"], in: path).output == "true"
-    }
-
-    /// Number of changed/untracked entries (0 = clean).
-    static func dirtyCount(_ path: String) -> Int {
-        let r = run(["status", "--porcelain"], in: path)
-        guard r.ok else { return 0 }
-        return r.output.isEmpty ? 0 : r.output.split(separator: "\n").count
-    }
-
-    /// Diff used to feed the AI, capped so we don't send a huge payload.
-    static func diffForMessage(_ path: String, maxChars: Int = 6000) -> String {
-        // Stage everything first so new files appear in the diff.
-        run(["add", "-A"], in: path)
-        let stat = run(["diff", "--cached", "--stat"], in: path).output
-        let diff = run(["diff", "--cached", "--unified=0"], in: path).output
-        let combined = stat.isEmpty ? diff : "\(stat)\n\n\(diff)"
-        return String(combined.prefix(maxChars))
-    }
-
-    /// Stage all, commit with `message`, then push. Returns the final result.
-    static func commitAndPush(_ path: String, message: String) -> GitResult {
-        let add = run(["add", "-A"], in: path)
-        guard add.ok else { return add }
-        let commit = run(["commit", "-m", message], in: path)
-        guard commit.ok else { return commit }
-        return push(in: path)
-    }
-
-    /// Push, setting upstream automatically if the branch has none.
-    /// Surfaces push failures (auth/permission/offline) instead of hiding them.
-    private static func push(in repo: String) -> GitResult {
-        var r = run(["push"], in: repo)
-        let lower = r.output.lowercased()
-        if !r.ok, lower.contains("no upstream") || lower.contains("set-upstream") {
-            r = run(["push", "-u", "origin", "HEAD"], in: repo)
-        }
-        if r.ok {
-            return GitResult(ok: true, output: "committed & pushed")
-        }
-        return GitResult(ok: false, output: "committed locally; push failed — \(String(r.output.prefix(160)))")
+        FileManager.default.fileExists(atPath: URL(fileURLWithPath: path).appendingPathComponent(".git").path)
     }
 
     static func repoName(_ path: String) -> String {
         URL(fileURLWithPath: path).lastPathComponent
     }
 
-    /// Commit ONLY `file` (relative to repo) then push — used by the journal
-    /// feature so unrelated working-tree changes aren't swept in.
-    static func commitFile(_ path: String, file: String, message: String) -> GitResult {
-        let add = run(["add", "--", file], in: path)
-        guard add.ok else { return add }
-        let commit = run(["commit", "-m", message, "--", file], in: path)
-        guard commit.ok else { return commit }
-        return push(in: path)
+    // MARK: - Status
+
+    static func dirtyCount(_ path: String) -> Int {
+        guard let repo = try? Repository.open(at: URL(fileURLWithPath: path)) else { return 0 }
+        return (try? repo.status())?.count ?? 0
+    }
+
+    // MARK: - Diff for AI commit message
+
+    static func diffForMessage(_ path: String, maxChars: Int = 6000) -> String {
+        stageAll(repoPath: path)
+        let url = URL(fileURLWithPath: path)
+        guard let repo = try? Repository.open(at: url),
+              let diff = try? repo.diff(to: .index) else { return "" }
+        var lines: [String] = []
+        for patch in diff.patches {
+            lines.append("--- a/\(patch.delta.oldFile.path)")
+            lines.append("+++ b/\(patch.delta.newFile.path)")
+            for hunk in patch.hunks {
+                lines.append(hunk.header.trimmingCharacters(in: .whitespacesAndNewlines))
+                for line in hunk.lines {
+                    let content = line.content.hasSuffix("\n") ? String(line.content.dropLast()) : line.content
+                    lines.append(line.type.rawValue + content)
+                }
+            }
+        }
+        return String(lines.joined(separator: "\n").prefix(maxChars))
+    }
+
+    // MARK: - Commit & push
+
+    @discardableResult
+    static func commitAndPush(_ path: String, message: String) async -> GitResult {
+        stageAll(repoPath: path)
+        do {
+            let repo = try Repository.open(at: URL(fileURLWithPath: path))
+            try repo.commit(message: message)
+        } catch {
+            return GitResult(ok: false, output: "commit failed: \(error)")
+        }
+        return await push(repoPath: path)
+    }
+
+    @discardableResult
+    static func commitFile(_ path: String, file: String, message: String) async -> GitResult {
+        do {
+            let repo = try Repository.open(at: URL(fileURLWithPath: path))
+            try repo.add(path: file)
+            try repo.commit(message: message)
+        } catch {
+            return GitResult(ok: false, output: "commit failed: \(error)")
+        }
+        return await push(repoPath: path)
+    }
+
+    // MARK: - Private: stage all
+
+    // Equivalent to `git add -A`. SwiftGitX's add(paths: []) calls git_index_add_all
+    // with an empty strarray, which libgit2 treats as nil — processing all files
+    // including deletions (removes them from the index when absent in workdir).
+    private static func stageAll(repoPath: String) {
+        guard let repo = try? Repository.open(at: URL(fileURLWithPath: repoPath)) else { return }
+        try? repo.add(paths: [])
+    }
+
+    // MARK: - Private: push via embedded-credential URL
+
+    private static func push(repoPath: String) async -> GitResult {
+        guard let token = TokenStore.shared.token, !token.isEmpty else {
+            return GitResult(ok: false, output: "committed locally; no GitHub token — push skipped")
+        }
+        guard let repo = try? Repository.open(at: URL(fileURLWithPath: repoPath)) else {
+            return GitResult(ok: false, output: "committed locally; push failed — could not open repo")
+        }
+        guard let originURL = repo.remote["origin"]?.url,
+              let authURL = injectToken(token, into: originURL) else {
+            return GitResult(ok: false, output: "committed locally; push failed — no 'origin' remote or unsupported URL")
+        }
+
+        // Add a temporary remote with the token embedded in the URL so that
+        // SwiftGitX's git_remote_push call picks up HTTPS credentials automatically.
+        let tempName = "gipet-push"
+        let tempRemote: Remote
+        do {
+            if let existing = repo.remote[tempName] {
+                try repo.remote.remove(existing)
+            }
+            tempRemote = try repo.remote.add(named: tempName, at: authURL)
+        } catch {
+            return GitResult(ok: false, output: "committed locally; push setup failed — \(error)")
+        }
+
+        do {
+            try await repo.push(remote: tempRemote)
+            try? repo.remote.remove(tempRemote)
+            return GitResult(ok: true, output: "committed & pushed")
+        } catch {
+            try? repo.remote.remove(tempRemote)
+            return GitResult(ok: false, output: "committed locally; push failed — \(error)")
+        }
+    }
+
+    private static func injectToken(_ token: String, into url: URL) -> URL? {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme?.hasPrefix("http") == true else { return nil }
+        components.user = "x-access-token"
+        components.password = token
+        return components.url
     }
 }

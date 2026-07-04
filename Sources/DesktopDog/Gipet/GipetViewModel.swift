@@ -164,7 +164,7 @@ final class GipetViewModel: ObservableObject {
             } else {
                 message = fallbackMessage()
             }
-            let result = GitService.commitAndPush(path, message: message)
+            let result = await GitService.commitAndPush(path, message: message)
             await MainActor.run {
                 self.setBusy(path, false)
                 self.updateRepo(path) {
@@ -191,7 +191,7 @@ final class GipetViewModel: ObservableObject {
             } else {
                 line = fallbackJournalLine()
             }
-            let result = appendJournalAndCommit(path: path, line: line)
+            let result = await appendJournalAndCommit(path: path, line: line)
             await MainActor.run {
                 self.setBusy(path, false)
                 self.updateRepo(path) {
@@ -202,7 +202,7 @@ final class GipetViewModel: ObservableObject {
         }
     }
 
-    private func appendJournalAndCommit(path: String, line: String) -> GitResult {
+    private func appendJournalAndCommit(path: String, line: String) async -> GitResult {
         let fileName = "gipet-journal.md"
         let fileURL = URL(fileURLWithPath: path).appendingPathComponent(fileName)
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd HH:mm"
@@ -219,7 +219,7 @@ final class GipetViewModel: ObservableObject {
             return GitResult(ok: false, output: "could not write \(fileName)")
         }
         let dfMsg = DateFormatter(); dfMsg.dateFormat = "yyyy-MM-dd"
-        return GitService.commitFile(path, file: fileName, message: "docs: journal \(dfMsg.string(from: Date()))")
+        return await GitService.commitFile(path, file: fileName, message: "docs: journal \(dfMsg.string(from: Date()))")
     }
 
     private func fallbackJournalLine() -> String {
