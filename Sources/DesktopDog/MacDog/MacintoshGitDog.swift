@@ -25,6 +25,8 @@ final class MacintoshGitDog: GitDog {
 
     var clickIndicatorScreenPos: CGPoint? = nil
     var clickIndicatorStartTime: Float = 0
+    private var lastDogViewFrame: CGRect = .zero
+    private var spaceChangeObserver: NSObjectProtocol?
 
     private(set) var Window: NSWindow!
 
@@ -43,10 +45,15 @@ final class MacintoshGitDog: GitDog {
         win.backgroundColor = .clear
         win.isOpaque = false
         win.level = NSWindow.Level.screenSaver
-        win.collectionBehavior = [.canJoinAllSpaces]
+        win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         win.ignoresMouseEvents = true
         win.orderFrontRegardless()
         self.Window = win
+
+        spaceChangeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.Window.orderFrontRegardless()
+        }
 
         let bg = BackgroundView()
         bg.dog = self
@@ -73,6 +80,9 @@ final class MacintoshGitDog: GitDog {
         if let obs = framerateObserver {
             UserDefaults.standard.removeObserver(token: obs)
         }
+        if let obs = spaceChangeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(obs)
+        }
     }
 
     private func StartTimer() {
@@ -86,17 +96,38 @@ final class MacintoshGitDog: GitDog {
             guard let self else { return }
             Time.TickTime()
             self.Tick()
+            self.updateClickThrough()
             FriendDogManager.shared.tickAll()
-            self.dogView.frame = self.CalculateGitDogViewFrame()
+            let newFrame = self.CalculateGitDogViewFrame()
             if self.hasFootmarks || self.clickIndicatorScreenPos != nil {
                 self.Window.contentView?.setNeedsDisplay(self.Window.contentView?.frame ?? .zero)
+            } else {
+                // Clear the region the dog (and its speech bubble) just vacated,
+                // otherwise the previous frame's drawing lingers behind it.
+                self.Window.contentView?.setNeedsDisplay(self.lastDogViewFrame.union(newFrame))
             }
+            self.lastDogViewFrame = newFrame
+            self.dogView.frame = newFrame
             self.dogView.setNeedsDisplay(self.dogView.bounds)
         }
         if let t = tickTimer {
             RunLoop.main.add(t, forMode: .common)
             RunLoop.main.add(t, forMode: .eventTracking)
         }
+    }
+
+    // The overlay window spans the whole screen with ignoresMouseEvents=true
+    // so clicks pass straight through to whatever's underneath (Finder,
+    // browser text, etc.) everywhere except the dog. Without this, dragging
+    // the dog also click-drags/selects whatever's behind it, since the click
+    // falls straight through our window. Toggle it off only while the cursor
+    // is actually over the dog (or mid-drag), so our window intercepts that
+    // click instead of passing it through — same 30pt radius Tick() uses to
+    // detect "over the dog" for grab/rest.
+    private func updateClickThrough() {
+        let cursor = GetCursorPosition()
+        let overDog = Vector2.Distance(position + Vector2(0, 14), cursor) < 30
+        Window.ignoresMouseEvents = !(overDog || isGrabbed)
     }
 
     private func installCharacterView(for kind: CharacterKind, into parent: NSView) {
@@ -135,7 +166,14 @@ func swapCharacter(to kind: CharacterKind) {
 
     func tickAndRedraw() {
         Tick()
-        dogView.frame = CalculateGitDogViewFrame()
+        let newFrame = CalculateGitDogViewFrame()
+        if hasFootmarks || clickIndicatorScreenPos != nil {
+            Window.contentView?.setNeedsDisplay(Window.contentView?.frame ?? .zero)
+        } else {
+            Window.contentView?.setNeedsDisplay(lastDogViewFrame.union(newFrame))
+        }
+        lastDogViewFrame = newFrame
+        dogView.frame = newFrame
         dogView.setNeedsDisplay(dogView.bounds)
     }
 

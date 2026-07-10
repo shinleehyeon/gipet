@@ -27,7 +27,7 @@ final class HotkeyManager {
                                          GetApplicationEventTarget(), 0, &ref)
         if status != noErr {
             print("RegisterEventHotKey failed (id=\(id)): \(status)")
-            return
+        return
         }
         hotKeyRefs.append(ref)
     }
