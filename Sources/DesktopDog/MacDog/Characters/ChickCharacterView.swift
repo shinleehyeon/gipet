@@ -44,10 +44,12 @@ final class ChickCharacterView: NSView {
               let dog else { return }
 
         g.saveGState()
-        // Same coord transform as MacintoshGitDog.Render().
+        // Same coord transform as MacintoshGitDog.Render() — 100/200 are the
+        // fixed base canvas size (pre-scale); don't swap in `bounds.height`
+        // here since it now reflects the scaled view size, not the base 200.
         g.scaleBy(x: 1, y: -1)
-        g.translateBy(x: CGFloat(100 - dog.position.x),
-                      y: CGFloat(100 - dog.position.y) - bounds.height)
+        g.scaleBy(x: CGFloat(dog.sizeScale), y: CGFloat(dog.sizeScale))
+        g.translateBy(x: CGFloat(100 - dog.position.x), y: CGFloat(100 - dog.position.y) - 200)
 
         // Critical: keep rig data fresh every frame. Several AI behaviors use
         // dogRig.head2EndPoint; stale rig data causes odd off-screen motion.

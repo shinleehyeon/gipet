@@ -84,6 +84,7 @@ struct ContributionView: View {
             ProfileHeaderView(model: model)
             ContributionGrid(days: model.days)
             ReposSection(model: model)
+            DogSizeSlider()
             footer
         }
         .frame(width: Layout.main, alignment: .leading)
@@ -419,6 +420,26 @@ struct StatPill: View {
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(GipetTheme.panelBg(16))
+    }
+}
+
+// MARK: - Dog size
+
+struct DogSizeSlider: View {
+    @ObservedObject private var appearance = AppearanceSettings.shared
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("강아지 크기")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(GipetTheme.ink)
+            Slider(value: $appearance.sizeScale, in: 0.5...2.0, step: 0.05)
+                .tint(GipetTheme.green)
+            Text("\(Int(appearance.sizeScale * 100))%")
+                .font(.system(size: 12))
+                .foregroundColor(GipetTheme.inkSoft)
+                .frame(width: 40, alignment: .trailing)
+        }
     }
 }
 

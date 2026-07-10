@@ -222,6 +222,11 @@ class GitDog {
     var targetPos: Vector2 = Vector2(300, 300)
     var targetDir: Float = 90
 
+    // Uniform visual scale for the whole sprite (1.0 = original size). Kept on
+    // the base class since both MacintoshGitDog's Render() and
+    // ChickCharacterView's draw() need to read it through a `GitDog` reference.
+    var sizeScale: Float = 1.0
+
     var currentSpeed: Float = 80
     var currentAcceleration: Float = 1300
 
@@ -324,6 +329,25 @@ class GitDog {
         onLockedTargetArrival = onArrival
         ScheduledWanderTime = 9999
         SetTask(.Wander, honck: false)
+    }
+
+    // Waypoints for a hand-drawn path (see MacintoshGitDog's modifier+drag path
+    // tracing). Walked one leg at a time by chaining walkTo's arrival callback.
+    private var pathQueue: [Vector2] = []
+
+    /// Walk through `points` in order, one leg at a time.
+    func followPath(_ points: [Vector2]) {
+        guard !points.isEmpty else { return }
+        pathQueue = points
+        advancePathQueue()
+    }
+
+    private func advancePathQueue() {
+        guard !pathQueue.isEmpty else { return }
+        let next = pathQueue.removeFirst()
+        walkTo(next) { [weak self] in
+            self?.advancePathQueue()
+        }
     }
 
     init() {

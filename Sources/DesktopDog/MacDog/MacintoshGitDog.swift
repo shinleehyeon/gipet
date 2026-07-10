@@ -21,6 +21,7 @@ final class MacintoshGitDog: GitDog {
     private var lastNotePath: String?
     private var framerateObserver: NSObjectProtocol?
     private var behaviorObserver: NSObjectProtocol?
+    private var appearanceObserver: NSObjectProtocol?
     private var rightClickMonitor: Any?
 
     var clickIndicatorScreenPos: CGPoint? = nil
@@ -65,6 +66,7 @@ final class MacintoshGitDog: GitDog {
 
         InitShadowPattern()
         settings = GitDogConfig.settings as? MacDogSettings
+        sizeScale = Float(AppearanceSettings.shared.sizeScale)
 
         framerateObserver = UserDefaults.standard.observe(forKey: MacDogSettings.FrameRateKey) { [weak self] in
             self?.StartTimer()
@@ -72,6 +74,10 @@ final class MacintoshGitDog: GitDog {
         behaviorObserver = NotificationCenter.default.addObserver(
             forName: .behaviorSettingsChanged, object: nil, queue: .main) { [weak self] _ in
             self?.rebuildBehaviorWeights()
+        }
+        appearanceObserver = NotificationCenter.default.addObserver(
+            forName: .appearanceSettingsChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.sizeScale = Float(AppearanceSettings.shared.sizeScale)
         }
         StartTimer()
     }
@@ -82,6 +88,12 @@ final class MacintoshGitDog: GitDog {
         }
         if let obs = spaceChangeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(obs)
+        }
+        if let obs = behaviorObserver {
+            NotificationCenter.default.removeObserver(obs)
+        }
+        if let obs = appearanceObserver {
+            NotificationCenter.default.removeObserver(obs)
         }
     }
 
@@ -97,6 +109,7 @@ final class MacintoshGitDog: GitDog {
             Time.TickTime()
             self.Tick()
             self.updateClickThrough()
+            self.updatePathDrawing()
             FriendDogManager.shared.tickAll()
             let newFrame = self.CalculateGitDogViewFrame()
             if self.hasFootmarks || self.clickIndicatorScreenPos != nil {
@@ -128,6 +141,35 @@ final class MacintoshGitDog: GitDog {
         let cursor = GetCursorPosition()
         let overDog = Vector2.Distance(position + Vector2(0, 14), cursor) < 30
         Window.ignoresMouseEvents = !(overDog || isGrabbed)
+    }
+
+    // Hold ⌥ (Option) and drag anywhere on screen to trace a path — the dog
+    // walks it leg by leg once you release. Sampled every ~18pt of cursor
+    // movement so the path isn't absurdly dense; polls the same global
+    // mouse/modifier state IsLeftMouseDown()/GetCursorPosition() already use,
+    // so it works regardless of ignoresMouseEvents/window focus.
+    private var isDrawingPath = false
+    private var drawnPath: [Vector2] = []
+    private static let pathSampleDistance: Float = 18
+
+    private func updatePathDrawing() {
+        let drawing = NSEvent.modifierFlags.contains(.option) && IsLeftMouseDown()
+        let cursor = GetCursorPosition()
+
+        if drawing && !isDrawingPath {
+            isDrawingPath = true
+            drawnPath = [cursor]
+        } else if drawing && isDrawingPath {
+            if let last = drawnPath.last, Vector2.Distance(last, cursor) > Self.pathSampleDistance {
+                drawnPath.append(cursor)
+            }
+        } else if !drawing && isDrawingPath {
+            isDrawingPath = false
+            if drawnPath.count > 1 {
+                followPath(drawnPath)
+            }
+            drawnPath = []
+        }
     }
 
     private func installCharacterView(for kind: CharacterKind, into parent: NSView) {
@@ -179,9 +221,10 @@ func swapCharacter(to kind: CharacterKind) {
 
     private func CalculateGitDogViewFrame() -> CGRect {
         let h = Window.contentView?.frame.height ?? 0
-        return CGRect(x: CGFloat(position.x) - 100,
-                      y: h - CGFloat(position.y) - 100,
-                      width: 200, height: 200)
+        let half = 100 * CGFloat(sizeScale)
+        return CGRect(x: CGFloat(position.x) - half,
+                      y: h - CGFloat(position.y) - half,
+                      width: half * 2, height: half * 2)
     }
 
     private func InitShadowPattern() {
@@ -210,7 +253,7 @@ func swapCharacter(to kind: CharacterKind) {
             let fadeEnd = fadeStart + FootMark.ShrinkTime
             if markTime <= timeNow && timeNow <= fadeEnd {
                 let fadeProgress = SamMath.Clamp((timeNow - fadeStart) / FootMark.ShrinkTime, 0, 1)
-                let radius = SamMath.Lerp(3, 0, fadeProgress)
+                let radius = SamMath.Lerp(3 * sizeScale, 0, fadeProgress)
                 let defaultFootmarkColor = shadowPattern ?? NSColor.lightGray.cgColor
                 let markColor = footMarks[i].isHeartTrail ? heartFootmarkColor : defaultFootmarkColor
                 FillCircleFromCenter(g, markColor, footMarks[i].position, Int(radius))
@@ -223,8 +266,11 @@ func swapCharacter(to kind: CharacterKind) {
     override func Render(_ param: Any) {
         let g = param as! CGContext
         g.scaleBy(x: 1, y: -1)
-        g.translateBy(x: CGFloat(100 - position.x),
-                      y: CGFloat(100 - position.y) - dogView.frame.height)
+        g.scaleBy(x: CGFloat(sizeScale), y: CGFloat(sizeScale))
+        // These 100/200 are the fixed base canvas size (pre-scale) — sizeScale
+        // is applied above, not baked into these constants, or the dog would
+        // drift off its actual position as the scale changes. See sizeScale.
+        g.translateBy(x: CGFloat(100 - position.x), y: CGFloat(100 - position.y) - 200)
         UpdateRig()
         let vector2 = Vector2(1.3, 0.4)
         let fromAngleDegrees = Vector2.GetFromAngleDegrees(direction)
