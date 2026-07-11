@@ -29,6 +29,14 @@ final class MacintoshGitDog: GitDog {
     private var lastDogViewFrame: CGRect = .zero
     private var spaceChangeObserver: NSObjectProtocol?
 
+    // While asleep/screen-locked/display-off, the tick timer keeps firing
+    // (only real system sleep suspends the process) — without this, Time.time
+    // keeps advancing in the background, so timers like the 5-minute NabMouse
+    // interval silently burn through while nobody's looking and can fire the
+    // moment you're back. Freeze Time.TickTime()/Tick() entirely instead.
+    private var isAsleep = false
+    private var sleepObservers: [NSObjectProtocol] = []
+
     private(set) var Window: NSWindow!
 
     init(memesDirectory: String, notesDirectory: String) {
@@ -79,6 +87,17 @@ final class MacintoshGitDog: GitDog {
             forName: .appearanceSettingsChanged, object: nil, queue: .main) { [weak self] _ in
             self?.sizeScale = Float(AppearanceSettings.shared.sizeScale)
         }
+        let ws = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
+            sleepObservers.append(ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.isAsleep = true
+            })
+        }
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            sleepObservers.append(ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.isAsleep = false
+            })
+        }
         StartTimer()
     }
 
@@ -95,6 +114,10 @@ final class MacintoshGitDog: GitDog {
         if let obs = appearanceObserver {
             NotificationCenter.default.removeObserver(obs)
         }
+        let ws = NSWorkspace.shared.notificationCenter
+        for obs in sleepObservers {
+            ws.removeObserver(obs)
+        }
     }
 
     private func StartTimer() {
@@ -105,7 +128,7 @@ final class MacintoshGitDog: GitDog {
         inverseFrameRate = 1.0 / settings.FrameRate
         tickTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(inverseFrameRate),
                                          repeats: true) { [weak self] _ in
-            guard let self else { return }
+            guard let self, !self.isAsleep else { return }
             Time.TickTime()
             self.Tick()
             self.updateClickThrough()

@@ -463,7 +463,7 @@ class GitDog {
             // small alternating paddle so it reads as a dangling kick rather
             // than frozen/static feet.
             let dir = Vector2.GetFromAngleDegrees(direction)
-            let paddle = sin(Time.time * 6) * 4
+            let paddle = sin(Time.time * 14) * 4
             lFootPos = GetFootHome(rightFoot: false) + dir * paddle
             rFootPos = GetFootHome(rightFoot: true) - dir * paddle
             lFootMoveTimeStart = -1

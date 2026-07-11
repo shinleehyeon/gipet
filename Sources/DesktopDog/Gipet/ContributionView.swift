@@ -4,6 +4,7 @@
 
 import SwiftUI
 import AppKit
+import ServiceManagement
 
 // MARK: - Theme (warm cream / light)
 
@@ -129,7 +130,9 @@ struct ContributionView: View {
                     .foregroundColor(GipetTheme.inkSoft)
             }
             Menu {
-Button("Sign out") { model.signOut() }
+                LaunchAtLoginToggle()
+                Divider()
+                Button("Sign out") { model.signOut() }
                 Divider()
                 Button("Quit", action: onQuit)
             } label: {
@@ -420,6 +423,29 @@ struct StatPill: View {
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(GipetTheme.panelBg(16))
+    }
+}
+
+// MARK: - Launch at login
+
+struct LaunchAtLoginToggle: View {
+    @State private var isEnabled: Bool = SMAppService.mainApp.status == .enabled
+
+    var body: some View {
+        Toggle("맥 켜면 자동 실행", isOn: $isEnabled)
+            .onChange(of: isEnabled) { newValue in
+                do {
+                    if newValue {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                } catch {
+                    NSLog("[Gipet] launch-at-login toggle failed: %@", error.localizedDescription)
+                    // Revert to whatever actually took effect.
+                    isEnabled = SMAppService.mainApp.status == .enabled
+                }
+            }
     }
 }
 
