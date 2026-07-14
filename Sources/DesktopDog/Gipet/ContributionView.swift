@@ -456,7 +456,7 @@ struct DogSizeSlider: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text("강아지 크기")
+            Text("펫 크기")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(GipetTheme.ink)
             Slider(value: $appearance.sizeScale, in: 0.5...2.0, step: 0.05)
