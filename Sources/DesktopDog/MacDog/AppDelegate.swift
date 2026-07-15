@@ -109,14 +109,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         gipet.onTellJoke = { [weak self] in
             let joke = DadJokes.random(avoiding: self?.lastJoke)
             self?.lastJoke = joke
-            self?.gitDog?.Say(joke, duration: 6)
+            self?.gitDog?.Say(joke, duration: 11)
         }
         // Committed today → dog does a heart trail then tells a dad joke (once per day).
         gipet.onDidCommit = { [weak self] in
             self?.gitDog?.requestTask(.HeartTrail)
             let joke = DadJokes.random(avoiding: self?.lastJoke)
             self?.lastJoke = joke
-            self?.gitDog?.Say(joke, duration: 6)
+            self?.gitDog?.Say(joke, duration: 11)
         }
 
         // Stats changed → refresh the menu-bar icon (mood + streak).
@@ -408,7 +408,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func menuSpeak() {
         let joke = DadJokes.random(avoiding: lastJoke)
         lastJoke = joke
-        gitDog?.Say(joke, duration: 6)
+        gitDog?.Say(joke, duration: 11)
     }
     @objc private func menuHonk()       { gitDog?.PlaySound(.HONCC) }
     @objc private func menuNabMouse()   { gitDog?.requestTask(.NabMouse) }
