@@ -8,7 +8,7 @@ class GitDog {
     // true  -> AI task picker can choose CollectWindow_* tasks
     // false -> collect windows run only when explicitly requested (hotkey/menu)
     private let allowAutomaticCollectWindows: Bool = false
-    private let heartFootmarkLifetime: Float = 200
+    private let heartFootmarkLifetime: Float = 18
     // Re-enable occasional mouse nabbing, but keep it infrequent.
     private let allowOccasionalNabMouse: Bool = true
     enum SoundEffect {

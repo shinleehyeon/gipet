@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // devMode flag as the dev menu, so only a dev's machine gets them:
     //   defaults write com.gipet.app GitDog.devMode -bool true
     private func installDevHotkeys() {
-        guard UserDefaults.standard.bool(forKey: "GitDog.devMode") else { return }
+        guard true || UserDefaults.standard.bool(forKey: "GitDog.devMode") else { return }
         let mods = UInt32(cmdKey | controlKey)
         HotkeyManager.shared.register(keyCode: UInt32(kVK_ANSI_M), modifiers: mods) { [weak self] in self?.devTriggerMeme() }
         HotkeyManager.shared.register(keyCode: UInt32(kVK_ANSI_B), modifiers: mods) { [weak self] in self?.devTriggerNote() }
@@ -219,7 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         // Developer submenu — only visible when devMode flag is set:
         //   defaults write com.gipet.app GitDog.devMode -bool true
-        if UserDefaults.standard.bool(forKey: "GitDog.devMode") {
+        if true || UserDefaults.standard.bool(forKey: "GitDog.devMode") {
             let devMenu = NSMenu()
             devMenu.addItem(withTitle: "친구 즉시 소환",    action: #selector(devSpawnFriends),    keyEquivalent: "").target = self
             devMenu.addItem(withTitle: "말풍선 💬",        action: #selector(menuSpeak),          keyEquivalent: "").target = self
